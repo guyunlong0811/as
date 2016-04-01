@@ -1468,7 +1468,7 @@ class TestController extends Controller
 //        D('Predis')->cli('social')->flushdb();
 //        D('Predis')->cli('fight')->flushdb();
 
-        /*$keys = D('Predis')->cli('game')->keys('u:*');
+        $keys = D('Predis')->cli('game')->keys('u:*');
         if (!empty($keys)) {
             D('Predis')->cli('game')->del($keys);
         }
@@ -1486,13 +1486,7 @@ class TestController extends Controller
         $keys = D('Predis')->cli('game')->keys('sn:*');
         if (!empty($keys)) {
             D('Predis')->cli('game')->del($keys);
-        }*/
-
-        $keys = D('Predis')->cli('fight')->keys('lf:*');
-        if (!empty($keys)) {
-            D('Predis')->cli('game')->del($keys);
         }
-
 
         echo 'success';
     }
@@ -1956,6 +1950,24 @@ class TestController extends Controller
 
         //返回
         echo 'ok';
+        return;
+
+    }
+
+    //DB测试
+    public function dbTest()
+    {
+        //连接数据库
+        C('G_SID', 101);
+        change_db_config(C('G_SID'), 'all');
+
+        //获取team任意一条数据
+        $tid = rand(1, 10000);
+
+        //查询
+        $where['tid'] = $tid;
+        $row = D('GTeam')->where($where)->find();
+        dump($row);
         return;
 
     }

@@ -52,67 +52,39 @@ class UserApi extends BaseApi
 
             default:
 
-                //获取配置文件
-                require_once(COMMON_PATH . 'Common/oksdk/common.inc.php');
+                //制造get数据
+                $arr['userId'] = $_POST['channel_uid'];
+                $arr['package'] = AWG_PACKAGE_NAME;
+                $arr['stamp'] = time();
+                $arr['sig'] = md5($arr['userId'] . AWG_FIX . $arr['stamp']);
 
-                //制造post数据
-                $post['interface'] = 'UserLogin';
-                $post['uid'] = $_POST['channel_uid'];
-                $post['token'] = $_POST['channel_token'];
-                $post['client_ip'] = get_ip();
-                $post['unix_time'] = time();
-                $str = $post['unix_time'] . '&' . $post['uid'] . '&' . OKSDK_APP_KEY . '&' . $post['token'];
-                $post['sign'] = md5($str);
-
-                //获取登录请求地址
-                $serverList = get_server_list();
-                $serverList = $serverList[C('G_SID')];
-                $host = '';
-                foreach ($serverList['channel'] as $value) {
-                    if ($value['channel_id'] == $_POST['channel_id']) {
-                        $host = $value['user_login'];
-                        break;
-                    }
+                //拼字符串
+                $get = '';
+                foreach($arr as $key => $value) {
+                    $get .= "{$key}={$value}&";
                 }
-
-                //平台出错
-                if ($host == '') {
-                    C('G_ERROR', 'channel_not_exist');
-                    return false;
-                }
+                $get = substr($get, 0, -1);
 
                 //发送请求
-                $jsonReturn = curl_link($host, 'post', json_encode($post));
+                $url = AWG_USER_URL . '?' . $get;
+                $jsonReturn = curl_link($url);
 
                 //获取返回
                 $loginInfo = json_decode($jsonReturn, true);
-                if ($loginInfo['result_code'] != 1) {
+                if ($loginInfo['error'] != '0') {
                     C('G_ERROR', 'platform_login_error');
                     C('G_DEBUG_PT_ERROR', $loginInfo);
                     return false;
                 } else {
-                    $_POST['channel_uid'] = $channelInfo['id'] = $loginInfo['uid'];
+                    $channelInfo['id'] = $_POST['channel_uid'];
                 }
-
-
-            /*
-            //安卓360
-            case '29001':
-                $rs = require_once(COMMON_PATH . 'Common/qihoo/user.php');
-                $channelInfo = json_decode($rs, true);
-                if (!isset($channelInfo['id'])) {
-                    C('G_ERROR', 'platform_login_error');
-                    return false;
-                } else {
-                    $_POST['channel_uid'] = $channelInfo['id'];
-                }
-                break;
-            */
 
         }
+
         if (!$return = $this->toLogin('fast')) {
             return false;
         }
+
         $return['channel_info'] = $channelInfo;
         return $return;
     }

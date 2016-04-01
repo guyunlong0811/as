@@ -15,7 +15,7 @@ $config = array(
     'DB_TYPE' => 'mysql',
     'DB_PREFIX' => '',                  //数据库表名前缀
     'DB_CHARSET' => 'utf8',             //数据库字符类型
-    'DB_FIELDS_CACHE' => false,          // 禁用字段缓存(不同库中有相同名字的表)
+    'DB_FIELDS_CACHE' => true,          // 禁用字段缓存(不同库中有相同名字的表)
 
 //    'DB_SQL_BUILD_CACHE' => true,       //SQL解析缓存
 //    'DB_SQL_BUILD_QUEUE' => 'apc',      //SQL解析缓存
@@ -55,9 +55,9 @@ $config = array(
     //日志
     'LOG_TYPE' => 'File',//日志记录类型
     'LOG_RECORD' => true,//开启了日志记录
-//    'LOG_LEVEL'  =>'DEBUG,EMERG,ALERT,CRIT,ERR', // 只记录EMERG ALERT CRIT ERR 错误
+    'LOG_LEVEL'  =>'EMERG,ALERT,CRIT,ERR', // 只记录EMERG ALERT CRIT ERR 错误
 
-    'APC_PREFIX' => 'fg_yhhx_as_',
+    'APC_PREFIX' => 'asia_',
 
     //邮件配置
     'THINK_EMAIL' => array(

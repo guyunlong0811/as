@@ -342,6 +342,11 @@ class PayApi extends BaseApi
         C('G_BEHAVE', 'pay');
         $orderStatus = 1;
 
+        //充值金额
+        if ($payDiamondAmount == 0) {
+            return 1;
+        }
+
         //没有订单号
         if (empty($orderId)) {
             return 0;
@@ -389,7 +394,7 @@ class PayApi extends BaseApi
             }
 
             //异常充值
-            if ($needDiamond != $payDiamondAmount && $payDiamondAmount > 0) {
+            if ($payDiamondAmount > 0 && $needDiamond != $payDiamondAmount) {
 
                 //计算实际获得金钱
                 $add['price'] = $payDiamondAmount / C('MONEY_RATE') * 100;
@@ -428,6 +433,90 @@ class PayApi extends BaseApi
 
         //删除订单
         D('GOrder')->DeleteData($where);
+
+        //返回
+        return $orderStatus;
+
+    }
+
+    //回调接口
+    public function callbackWeb($tid, $productId, $platformOrderId, $rate, $verify)
+    {
+        //定义行为
+        C('G_BEHAVE', 'pay');
+        $orderStatus = 1;
+        $now = time();
+
+        //查询有没有处理过该订单
+        $count = M('LOrder')->where("`platform_order_id`='{$platformOrderId}'")->count();
+        if($count > 0){
+            return -2;
+        }
+
+        //获取cash配置
+        $myCashId = 0;
+        $myChannelId = D('GTeam')->getAttr($tid, 'channel_id');
+        $cashDynConfig = D('StaticDyn')->access('cash');
+        foreach ($cashDynConfig as $channelId => $value) {
+            foreach ($value as $cashId => $val) {
+                if ($val == $productId && $myChannelId == $channelId) {
+                    $myCashId = $cashId;
+                    break;
+                }
+            }
+        }
+
+        //充值方案不存在
+        if($myCashId == 0){
+            return -100;
+        }
+
+        //获取Cash信息
+        $cashConfig = D('Static')->access('cash', $myCashId);
+        if($rate == 0){
+            $diamondExtra = ceil($cashConfig['value'] - $cashConfig['value']);
+        }else{
+            $diamondExtra = ceil($cashConfig['value'] * $rate - $cashConfig['value']);
+        }
+        
+        //订单日志
+        $add['tid'] = $tid;
+        $add['cash_id'] = $myCashId;
+        $add['price'] = $cashConfig['price'];
+        $add['channel_id'] = $myChannelId;
+        $add['order_id'] = create_order_id($tid);
+        $add['platform_order_id'] = $platformOrderId;
+        $add['verify'] = $verify;
+        $add['level'] = D('GTeam')->getAttr($tid, 'level');
+        $add['starttime'] = $now;
+        if($rate == 0){
+            $add['comment'] = C('G_SID') . '#' . $add['order_id'];
+        }else{
+            $add['comment'] = $rate;
+        }
+
+        //开始事务
+        $this->transBegin();
+
+        //正常充值
+        if (false === $this->delivery($tid, $myCashId)) {
+            goto end;
+        }
+
+        //额外增加
+        if (false === D('GTeam')->incAttr($tid, 'diamond_free', $diamondExtra)) {
+            goto end;
+        }
+
+        C('G_TRANS_FLAG', true);
+        end:
+        if (!$this->transEnd()) {
+            $orderStatus = -5;//增加商品失败
+        }
+
+        //记录日志
+        $add['status'] = $orderStatus;
+        D('LOrder')->CreateData($add);
 
         //返回
         return $orderStatus;

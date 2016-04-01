@@ -15,7 +15,7 @@ class RouterController extends Controller
         901, 903, 1001, 1004, 1101, 1102, 1103, 1104,
     );
     private $mErrorApp = array(
-        'dev199', 'dev200',
+        'dev199', 'review', 'asia',
     );
 
     //发起请求
@@ -112,9 +112,7 @@ class RouterController extends Controller
         $a = $method[1];
 
         //执行协议逻辑
-        Think\Log::record('API_START', 'DEBUG');
         $this->mResult = A($c, 'Api')->$a();
-        Think\Log::record('API_END', 'DEBUG');
 
         //执行附加功能
         if ($this->mResult !== false && isset($_POST['sub_params']) && !empty($_POST['sub_params'])) {

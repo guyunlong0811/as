@@ -14,10 +14,6 @@
 --修改：调整10225的技能数值算法
 --修改：调整10115的技能数值算法
 
---日期：2016-03-31
---作者：xipxop
---修改：调整10263的技能数值算法
-
 -----------------------------------------------------
 
 function skill_des(skill_index, skill_level, attri)
@@ -395,7 +391,7 @@ if skill_index == 10262 then
 end
 
 if skill_index == 10263 then
-   des_value[1] = math.floor(attacker_curr_magic * 0.3 + ( 1 + skill_level) * 100)
+   des_value[1] = math.floor(attacker_curr_magic * 0.3 + 100 * ( 1 + skill_level * 0.1))
    des_value[2] = 1000 + skill_level * 100
 end
 
@@ -809,12 +805,12 @@ end
 
 -- 1053
 if skill_index == 10532 then
-   des_value[1] = 2*0.2*0.5 * (1 + skill_level * 0.04 * 2) * 4
+   des_value[1] = 2*0.2 * (1 + skill_level * 0.04 * 2) * 4
    des_value[1] = math.floor(des_value[1] * 100)  
 end
 
 if skill_index == 10533 then
-   des_value[1] = math.floor(attacker_curr_magic * 0.3 + 100 * ( 1 + skill_level))
+   des_value[1] = math.floor(attacker_curr_magic * 0.3 + 100 * ( 1 + skill_level * 0.1))
 end
 
 if skill_index == 10534 then
@@ -822,7 +818,7 @@ if skill_index == 10534 then
 end
 
 if skill_index == 10535 then
-   des_value[1] =  1 + skill_level
+   des_value[1] = 1 + skill_level
 end
 
 -- return

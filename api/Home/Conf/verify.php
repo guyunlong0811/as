@@ -2,7 +2,7 @@
 //验证配置
 return array(
 
-    'AES_KEY' => 'c9d23f432dd5e41b',//aes密钥
+    'AES_KEY' => 'linekong_yingpei',//aes密钥
 
     'CACHE_VERIFY' => 'fg_otl_cache',//清除缓存
 

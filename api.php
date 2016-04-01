@@ -8,7 +8,7 @@ if(version_compare(PHP_VERSION,'5.3.0','<'))  die('require PHP > 5.3.0 !');
 define('APP_DEBUG', true);
 
 //状态配置
-define('APP_STATUS','local');
+define('APP_STATUS','local');//local#master#develop
 
 //安全文件
 //define('DIR_SECURE_FILENAME', 'default.html');//配置安全文件名

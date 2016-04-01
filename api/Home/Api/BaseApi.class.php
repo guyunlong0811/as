@@ -31,7 +31,7 @@ class BaseApi extends Controller
         '8' => 'box',
         '9' => 'emblem',
     );
-    private $openModule = array('Test', 'PayNotify',);
+    private $openModule = array('Test', 'PayNotify', 'Asia',);
 
     public function _initialize()
     {

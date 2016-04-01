@@ -78,7 +78,7 @@ return array(
         'config_error' => array('code' => 1103, 'message' => '服务器忙',),
         'lua_error' => array('code' => 1104, 'message' => '服务器忙',),
         'sid_not_exist' => array('code' => 1105, 'message' => '服务器不存在',),
-        'server_maintenance' => array('code' => 1106, 'message' => '服务器维护中',),
+        'server_maintenance' => array('code' => 1106, 'message' => '服务器将在15:00开放',),
         'db_field_max' => array('code' => 1107, 'message' => '数据已经达到最大值',),
         'server_close_reg' => array('code' => 1108, 'message' => '暂时不开放创建新帐号',),
         'version_low' => array('code' => 1109, 'message' => '客户端版本过低',),

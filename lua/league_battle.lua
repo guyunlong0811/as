@@ -20,10 +20,6 @@
 --作者：xipxop
 --修改：修改公会战守护塔的生命上限
 
---日期：2016-03-31
---作者：xipxop
---修改：修改公会战参与奖励
-
 -----------------------------------------------------
 
 math.randomseed(tostring(os.time()):reverse():sub(1, 6))  
@@ -136,20 +132,11 @@ end
 --联盟战随机掉落技能使用次数脚本
 
 function league_battle_reward_skill(instance_id, damage) --传参：目标据点
-
-	local points = tonumber(damage)
-	
-	-- 根据伤害给参与奖励
-	if points <= 200000 then
-	   return 0, 2160002
-	elseif points > 200000 and points <= 500000 then
-	   return 0, 2160004
-	else
-	   return 0, 2160005
-	end
+	local a = math.random(1,100)
+	local b = math.random(1,3)
     
     -- 参数1：技能类型，参数2：box
-	-- return 0, 601
+	return 0, 601
    
 end
 
@@ -201,13 +188,13 @@ function league_battle_monster_hp(monster_id, league_level, league_food_level, l
 	league_level_add = 0
 
 	if monster_id == 1 then
-       hp = 3000000 + ( league_level - 1) * league_level_add
+       hp = 5000000 + ( league_level - 1) * league_level_add
     elseif monster_id == 2 then
-       hp = 4000000 + ( league_level - 1) * league_level_add
+       hp = 5000000 + ( league_level - 1) * league_level_add
     elseif monster_id == 3 then
        hp = 5000000 + ( league_level - 1) * league_level_add
     else
-       hp = 4000000
+       hp = 5000000
     end
     
     -- 上限保护，不超过20亿
