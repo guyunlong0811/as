@@ -81,6 +81,7 @@ class GTeamModel extends BaseModel
         $arr['league_id'] = $team['league_id'] > 0 ? $team['league_id'] : 0;
         $arr['channel_id'] = $team['channel_id'] > 0 ? $team['channel_id'] : $_POST['channel_id'];
         $arr['channel_uid'] = $_POST['channel_uid'];
+        $arr['channel_token'] = $_POST['channel_token'];
         if($tid == 0){
             $tid = $token;
         }

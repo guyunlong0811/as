@@ -2,6 +2,7 @@
 namespace Home\Api;
 
 use Think\Controller;
+use Think;
 
 class UserApi extends BaseApi
 {
@@ -52,64 +53,46 @@ class UserApi extends BaseApi
 
             default:
 
-                //获取配置文件
-                require_once(COMMON_PATH . 'Common/oksdk/common.inc.php');
-
-                //制造post数据
-                $post['interface'] = 'UserLogin';
-                $post['uid'] = $_POST['channel_uid'];
-                $post['token'] = $_POST['channel_token'];
-                $post['client_ip'] = get_ip();
-                $post['unix_time'] = time();
-                $str = $post['unix_time'] . '&' . $post['uid'] . '&' . OKSDK_APP_KEY . '&' . $post['token'];
-                $post['sign'] = md5($str);
-
-                //获取登录请求地址
-                $serverList = get_server_list();
-                $serverList = $serverList[C('G_SID')];
-                $host = '';
-                foreach ($serverList['channel'] as $value) {
-                    if ($value['channel_id'] == $_POST['channel_id']) {
-                        $host = $value['user_login'];
-                        break;
+                //检查有没有已有登录凭证
+                if (!empty($_POST['channel_token'])) {
+                    $info = D('GTeam')->field("`tid`,`uid`")->where("`role_id`='{$_POST['channel_token']}'")->find();
+                    //没有凭证走sdk
+                    if (!empty($info)) {
+                        $params['uid'] = $info['uid'];
+                        if (!$return = uc_link($params, 'User.getChannelUid')) {
+                            return false;
+                        }
+                        $_POST['channel_uid'] = $channelInfo['id'] = $return['channel_uid'];
+                        goto end;
                     }
                 }
 
-                //平台出错
-                if ($host == '') {
-                    C('G_ERROR', 'channel_not_exist');
-                    return false;
-                }
+                //制造get数据
+                $get['appid'] = SNDA_APP_ID;
+                $get['timestamp'] = time();
+                $get['sequence'] = $_POST['udid'] . time();
+                $get['ticket_id'] = $_POST['channel_token'];
+                $strGet = "appid={$get['appid']}&sequence={$get['sequence']}&ticket_id={$get['ticket_id']}&timestamp={$get['timestamp']}";
+                $get['sign'] = md5($strGet . SNDA_APP_KEY);
+                $strGet .= "&sign={$get['sign']}";
+                $host = SNDA_LOGIN_URL . '?' . $strGet;
 
                 //发送请求
-                $jsonReturn = curl_link($host, 'post', json_encode($post));
+                $jsonReturn = curl_link($host);
 
                 //获取返回
                 $loginInfo = json_decode($jsonReturn, true);
-                if ($loginInfo['result_code'] != 1) {
+                if ($loginInfo['code'] != 0) {
                     C('G_ERROR', 'platform_login_error');
                     C('G_DEBUG_PT_ERROR', $loginInfo);
                     return false;
                 } else {
-                    $_POST['channel_uid'] = $channelInfo['id'] = $loginInfo['uid'];
+                    $_POST['channel_uid'] = $channelInfo['id'] = $loginInfo['data']['userid'];
                 }
-
-
-            /*
-            //安卓360
-            case '29001':
-                $rs = require_once(COMMON_PATH . 'Common/qihoo/user.php');
-                $channelInfo = json_decode($rs, true);
-                if (!isset($channelInfo['id'])) {
-                    C('G_ERROR', 'platform_login_error');
-                    return false;
-                } else {
-                    $_POST['channel_uid'] = $channelInfo['id'];
-                }
-                break;
-            */
 
         }
+
+        end:
         if (!$return = $this->toLogin('fast')) {
             return false;
         }
@@ -256,6 +239,9 @@ class UserApi extends BaseApi
             //更新最后登录时间
             $where['tid'] = $this->mTid = $tid;
             $updateTeam['last_login_time'] = time();
+            if (!empty($_POST['channel_token'])) {
+                $updateTeam['role_id'] = $_POST['channel_token'];
+            }
             D('GTeam')->UpdateData($updateTeam, $where);
 
             //写入登录记录
@@ -403,7 +389,6 @@ class UserApi extends BaseApi
         }
 
         //进入游戏
-        $this->enter($tid);//返回登录所需信息
         $arr = D('Predis')->cli('game')->hgetall($this->mSessionKey);
         $arr['tid'] = $tid;
         $arr['league_id'] = 0;
@@ -412,6 +397,8 @@ class UserApi extends BaseApi
         D('Predis')->cli('game')->del($this->mSessionKey);
         $this->mSessionKey = 's:' . $tid;
         D('Predis')->cli('game')->set('t:' . $this->mToken, $tid);
+        $_POST['channel_token'] = $arr['channel_token'];
+        $this->enter($tid);//返回登录所需信息
 
         //返回
         return A('Team', 'Api')->getMainInfo($tid, $this->mSilence);

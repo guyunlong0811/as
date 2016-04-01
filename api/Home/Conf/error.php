@@ -87,7 +87,7 @@ return array(
         //非法操作
         'id_not_exist' => array('code' => 1201, 'message' => '协议缺少通讯ID',),
         'login_timeout' => array('code' => 1202, 'message' => '登录状态过期',),
-        'params_error' => array('code' => 1203, 'message' => '参数错误',),
+        'params_error' => array('code' => 1203, 'message' => '登录状态失效，请重启游戏',),
         'no_update' => array('code' => 1204, 'message' => '数据与原来的相同',),
         'sign_error' => array('code' => 1205, 'message' => 'Sign验证失败',),
         'sign_repeat' => array('code' => 1206, 'message' => '协议重复发送',),

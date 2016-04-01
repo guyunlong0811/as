@@ -6,89 +6,72 @@ use Think\Controller;
 class PayNotifyController extends Controller
 {
 
-    //oksdk
-    public function oksdk()
+    public function snda()
     {
 
-        require_once(COMMON_PATH . 'Common/oksdk/common.inc.php');
+        //log
+//        Think\Log::record('POST数据:' . json_encode($_POST), 'DEBUG');
+
+        //结果
+        $status = -1;
 
         //验证请求是否正确
-        $params = "oksdk_app_id={$_GET['oksdk_app_id']}&channel_code={$_GET['channel_code']}&order_id={$_GET['order_id']}&oksdk_order_id={$_GET['oksdk_order_id']}&uid={$_GET['uid']}&charge_money={$_GET['charge_money']}&charge_amount={$_GET['charge_amount']}&charge_time={$_GET['charge_time']}&gateway_id={$_GET['gateway_id']}&custom_info={$_GET['custom_info']}";
-        $str = $params . OKSDK_APP_KEY;
-        $mySign = md5($str);
+        $mySign = $this->sign($_POST, SNDA_APP_KEY);
 
         //验证失败
-        if ($mySign != $_GET['sign']) {
-            echo 'fail';
-            return;
+        if ($mySign == $_POST['sign']) {
+
+            //造数据
+            $verify = json_encode($_POST);
+
+            //处理透传信息
+            $info = explode(':', $_POST['extend']);
+
+            //获取订单号
+            $orderId = $info[1];
+
+            //配置数据库
+            $serverId = $info[0];
+            C('G_SID', $serverId);
+            change_db_config($serverId, 'all');
+
+            //执行逻辑
+            $rs = A('Pay', 'Api')->callback(-1, $orderId, $_POST['orderNo'], $verify, 1, $_POST['extend']);
+
+            //解析返回
+            switch ($rs) {
+                case 1:
+                case 2:
+                    $status = 'success';
+                    break;
+                default:
+                    $status = 'fail';
+            }
         }
 
-        //造数据
-        $status = 1;
-        $verify = $params . "&sign={$_GET['sign']}";
-
-        //获取订单号
-        $orderId = $_GET['custom_info'];
-
-        //配置数据库
-        C('G_SID', $_GET['gateway_id']);
-        change_db_config($_GET['gateway_id'], 'all');
-
-        //执行逻辑
-        $rs = A('Pay', 'Api')->callback($_GET['charge_money'] * 100, $orderId, $_GET['oksdk_order_id'], $verify, $status, $_GET['custom_info']);
-
-        //解析返回
-        switch ($rs) {
-            case -5:
-                echo 'fail';
-                break;
-            default:
-                echo 'ok';
-        }
-
+        //返回
+        header_info('plain');
+        echo $status;
         return;
 
     }
 
-    //360平台
-    public function qihoo()
+    // $params数组必须包含timestamp
+    private function sign($params, $secret_key)
     {
-
-        //sdk验证
-        $verify = require_once(COMMON_PATH . 'Common/qihoo/pay_callback.php');
-
-        //验证失败
-        if ($verify !== true) {
-            echo 'verify fail';
-            return;
+        unset($params['sign']);
+        ksort($params);
+        $pairs = array();
+        if (empty($params)) {
+            return false;
         }
-
-        //确定服务器ID&配置数据库
-        $arr = json_decode($_GET['app_ext1'], true);
-        C('G_SID', $arr['sid']);
-        change_db_config(C('G_SID'), 'all');
-
-        //参数获取
-        $orderId = $_GET['app_order_id'];
-        $platformOrderId = $_GET['order_id'];
-        $verify = $_GET['sign'];
-        $status = $_GET['gateway_flag'] == 'success' ? 1 : 0;
-        $comment = 'app_ext1=' . $_GET['app_ext1'] . '&app_ext2=' . $_GET['app_ext2'];
-
-        //执行逻辑
-        $rs = A('Pay', 'Api')->callback($orderId, $platformOrderId, $verify, $status, $comment);
-
-        //解析返回
-        switch ($rs) {
-            case -5:
-                echo 'fail';
-                break;
-            default:
-                echo 'ok';
+        foreach ($params as $k => $v) {
+            $pairs[] = $k . '=' . $v;
         }
+        $str = implode('&', $pairs); // 拼接字符创
+        $str = $str . $secret_key; // 把APPKEY补充到最后
 
-        return;
-
+        return md5($str);
     }
 
 }

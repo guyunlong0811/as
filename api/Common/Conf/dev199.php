@@ -13,4 +13,9 @@ define('WEB_URL', 'http://sbapi7.forevergame.com/');
 define('UC_URL', 'http://sbuc.forevergame.com/user.php');
 
 //ip_white
-define('IP_WHITE', '101.81.20.34');//多个IP用#号隔开
+define('IP_WHITE', '210.22.178.170');//多个IP用#号隔开
+
+//盛大特殊配置
+define('SNDA_APP_ID', 791000183);
+define('SNDA_APP_KEY', '8810c07a5524cce637716a033c1ac008');
+define('SNDA_LOGIN_URL', 'http://api.mygm.sdo.com/v1/open/ticket');
