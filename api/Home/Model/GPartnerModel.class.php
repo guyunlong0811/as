@@ -12,19 +12,42 @@ class GPartnerModel extends BaseModel
     );
 
     //查询全部伙伴信息
-    public function getAll($tid, $field = array(), $partner = array())
+    public function getAll($tid, $field = array(), $partners = array())
     {
+        //去除无用group
+        if(in_array(0, $partners)){
+            foreach($partners as $key => $value){
+                if($value == 0){
+                    unset($partners[$key]);
+                }
+            }
+        }
+
+        //查询基本数据
         if (empty($field)) {
             $field = array('group', 'index', 'level', 'exp', 'favour', 'soul', 'force', 'skill_1_level', 'skill_2_level', 'skill_3_level', 'skill_4_level', 'skill_5_level', 'skill_6_level',);
         }
         $where['tid'] = $tid;
-        if (!empty($partner)) {
-            $where['group'] = array('in', $partner);
+        if (!empty($partners)) {
+            $where['group'] = array('in', $partners);
         }
-        $list = $this->field($field)->where($where)->select();
-        if (empty($list))
+        $partnerList = $this->field($field)->where($where)->select();
+        if (empty($partnerList)){
             return array();
-        return $list;
+        }
+
+        //获取伙伴装备&纹章信息
+        $equipList = D('GEquip')->getPartnersList($tid, $partners);
+        $emblemList = D('GEmblemEquip')->getPartnersList($tid, $partners);
+
+        //遍历数据
+        foreach ($partnerList as $key => $value) {
+            $partnerList[$key]['equip_list'] = $equipList[$value['group']];
+            $partnerList[$key]['emblem_list'] = empty($emblemList[$value['group']]) ? array() : $emblemList[$value['group']];
+        }
+
+        //返回
+        return $partnerList;
     }
 
     //获得伙伴
@@ -138,14 +161,10 @@ class GPartnerModel extends BaseModel
 //                D('LPartner')->cLog($tid,$data['group'],'skill_'.$i.'_level',$data['skill_'.$i.'_level'],0);
 
         //创建伙伴装备
-        if (!D('GEquip')->cData($tid, $partnerConfig['init_equipment_weapon'], $partnerConfig['group'])) {
-            return false;
-        }
-        if (!D('GEquip')->cData($tid, $partnerConfig['init_equipment_armor'], $partnerConfig['group'])) {
-            return false;
-        }
-        if (!D('GEquip')->cData($tid, $partnerConfig['init_equipment_accessory'], $partnerConfig['group'])) {
-            return false;
+        for ($i = 1; $i <= 6; ++$i) {
+            if (!D('GEquip')->cData($tid, $partnerConfig['group'] . '0' . $i, $partnerConfig['group'])) {
+                return false;
+            }
         }
 
         //返回
@@ -447,12 +466,28 @@ class GPartnerModel extends BaseModel
     }
 
     //获取伙伴显示信息
-    public function getDisplayInfo($tid, $partner)
+    public function getDisplayInfo($tid, $partners)
     {
+        //去除无用group
+        if(in_array(0, $partners)){
+            foreach($partners as $key => $value){
+                if($value == 0){
+                    unset($partners[$key]);
+                }
+            }
+        }
+
         $field = array('group', 'index', 'level', 'favour', 'force',);
         $where['tid'] = $tid;
-        $where['group'] = array('in', $partner);
-        return $this->field($field)->where($where)->select();
+        $where['group'] = array('in', $partners);
+        $select = $this->field($field)->where($where)->select();
+        $list = array();
+        if (!empty($select)) {
+            foreach ($select as $value) {
+                $list[$value['group']] = $value;
+            }
+        }
+        return $list;
     }
 
     //获取战力最高的5伙伴group

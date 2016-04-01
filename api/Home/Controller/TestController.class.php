@@ -24,20 +24,20 @@ class TestController extends Controller
 
                 'fast' => array(
                     'adid' => '1',
-                    'base_version' => '1.0.0.0',
+                    'base_version' => '0.1.0.0',
                     'udid' => 'e05e175d4878543f79781bbc5a1d587b',
                     'mac' => 'e05e175d4878543f79781bbc5a1d587b',
-                    'channel_id' => 1002,
+                    'channel_id' => 1001,
                     'channel_uid' => '',
                     'channel_token' => '',
                     'tid' => 0,
                 ),
 
                 'login' => array(
-                    'base_version' => '1.0.0.0',
+                    'base_version' => '0.1.0.0',
                     'username' => 'guyunlong',
                     'password' => '123456',
-                    'channel_id' => 1002,
+                    'channel_id' => 1001,
                     'udid' => '1q2w3e4r5t6y7u8i9o0p',
                     'pts' => 0,
                     'tid' => 0,
@@ -369,12 +369,8 @@ class TestController extends Controller
 
                 'getList' => array(),
 
-                'combine' => array(
-                    'emblem_combine_id' => 1,
-                ),
-
                 'equip' => array(
-                    'emblem_id' => 2,
+                    'emblem_id' => 1011,
                     'partner' => 1001,
                     'slot' => 1,
                 ),
@@ -385,11 +381,17 @@ class TestController extends Controller
                 ),
 
                 'decompose' => array(
-                    'emblem_id' => 6,
+                    'emblem_id' => 1031,
+                    'count' => 3,
                 ),
 
                 'sell' => array(
-                    'emblem_id' => 5,
+                    'emblem_id' => 1041,
+                    'count' => 3,
+                ),
+
+                'combine' => array(
+                    'emblem_combine_id' => 1011,
                 ),
 
             ),
@@ -1274,7 +1276,7 @@ class TestController extends Controller
         $this->test = isset($_GET['test']) ? $_GET['test'] : self::DEFAULT_UID;
 
         //测试服务器
-        $sid = isset($_GET['sid']) ? $_GET['sid'] : 104;
+        $sid = isset($_GET['sid']) ? $_GET['sid'] : 101;
         C('G_SID', $sid);
         change_db_config(C('G_SID'), 'all');
 

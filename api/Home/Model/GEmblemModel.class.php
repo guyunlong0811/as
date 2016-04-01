@@ -6,153 +6,203 @@ use Think\Model;
 class GEmblemModel extends BaseModel
 {
 
-    protected $_auto = array(
-        array('partner', 0),
-        array('slot', 0),
-        array('ctime', 'time', 1, 'function'), //新增的时候把ctime字段设置为当前时间
-    );
+    //拆表参数
+    const TABLE_NAME = 'g_emblem_';
+    const TABLE_NUM = 10;
+    protected $autoCheckFields = false;
 
-    //查询当前情况
+    //查询当前背包情况
     public function getAll($tid)
     {
-        $field = array('tid', 'ctime');
+        $field = array('emblem', 'count',);
         $where['tid'] = $tid;
-        $list = $this->field($field, true)->where($where)->select();
+        $where['count'] = array('gt', 0);
+        $order['emblem'] = 'asc';
+        $list = $this->table($this->getName($tid, self::TABLE_NAME))->field($field)->where($where)->order($order)->select();
         if (empty($list)) {
             return array();
         }
         return $list;
     }
 
-    //查询当前情况
+    //获取纹章情况
     public function getList($tid)
     {
-        $field = array('index', 'count(`index`)' => 'count');
-        $where['tid'] = $tid;
-        $where['partner'] = 0;
-        $where['slot'] = 0;
-        $select = $this->field($field)->where($where)->group('`index`')->select();
+        $select = $this->getAll($tid);
         $list = array();
         if (!empty($select)) {
-            foreach($select as $value){
-                $list[$value['index']] = $value['count'];
+            foreach ($select as $value) {
+                $list[$value['emblem']] = $value['count'];
             }
         }
         return $list;
     }
 
-    //获取多伙伴装备情况
-    public function getPartnersList($tid, $partner)
+    //获取某种纹章的值
+    public function getCount($tid, $emblem)
     {
-        $field = array('index', 'partner');
         $where['tid'] = $tid;
-        $where['partner'] = array('in', $partner);
-        $select = $this->field($field)->where($where)->select();
+        $where['emblem'] = $emblem;
+        $count = $this->table($this->getName($tid, self::TABLE_NAME))->where($where)->getField('count');
+        $count = is_null($count) ? false : $count;
+        return $count;
+    }
+
+    //获取某些纹章的值
+    public function getCounts($tid, $emblemIds)
+    {
+        $where['tid'] = $tid;
+        $where['emblem'] = array('in', $emblemIds);
+        $select = $this->table($this->getName($tid, self::TABLE_NAME))->field('`emblem`,`count`')->where($where)->select();
         if (empty($select)) {
             return array();
         }
         $list = array();
         foreach ($select as $value) {
-            $list[$value['partner']][] = $value['index'];
+            $list[$value['emblem']] = $value['count'];
         }
         return $list;
     }
 
-    //获取装备情况
-    public function getEquipList($tid, $partner)
+    //添加纹章
+    public function cData($tid, $emblem, $count = 1)
     {
-        $field = array('index');
-        $where['tid'] = $tid;
-        $where['partner'] = $partner;
-        $select = $this->field($field)->where($where)->select();
-        if (empty($select)) {
-            return array();
-        }
-        $list = array();
-        foreach ($select as $value) {
-            $list[] = $value['index'];
-        }
-        return $list;
-    }
 
-    //获取单条数据
-    public function getRow($id)
-    {
-        $where['id'] = $id;
-        return $this->getRowCondition($where);
-    }
+        //id为0或数量为0
+        if (!($emblem > 0)) {
+            return true;
+        }
 
-    //增加纹章
-    public function cData($tid, $index, $count)
-    {
-        $add['tid'] = $tid;
-        $add['index'] = $index;
-        for ($i = 1; $i <= $count; ++$i) {
-            if (!$this->CreateData($add)) {
+        //查看背包理由没有该纹章
+        $countAll = $this->getCount($tid, $emblem);
+
+        //计算应该增加的值
+        $max = D('Static')->access('emblem', $emblem, 'stacking');
+
+        //如果没有
+        if (false === $countAll) {
+
+            //计算增加数量
+            $count = $count > $max ? $max : $count;
+
+            //增加
+            $add['tid'] = $tid;
+            $add['emblem'] = $emblem;
+            $add['count'] = $count;
+            $add['total'] = $count;
+            if (false === $this->table($this->getName($tid, self::TABLE_NAME))->CreateData($add)) {
                 return false;
             }
+
+        } else {
+
+            //已达最大值
+            if ($countAll == $max) {
+                return true;
+            }
+
+            //计算应该增加的值
+            if ($countAll + $count > $max) {
+                $count = $max - $countAll;
+            }
+
+            //sql
+            $table = $this->getName($tid, self::TABLE_NAME);
+            $sql = "update `{$table}` set `count` = `count` + {$count},`total` = `total` + {$count} where `tid`='{$tid}' && `emblem`='{$emblem}';";
+            if (false === $this->execute($sql)) {
+                return false;
+            }
+
         }
+
+        //记录日志
+        D('LEmblem')->cLog($tid, $emblem, $count);
+
+        //返回
         return true;
-    }
 
-    //卸下装备
-    public function unload($tid, $partner, $slot)
-    {
-        $where['tid'] = $tid;
-        $where['partner'] = $partner;
-        $where['slot'] = $slot;
-        $data['partner'] = 0;
-        $data['slot'] = 0;
-        return $this->UpdateData($data, $where);
-    }
-
-    //装备纹章
-    public function equip($id, $partner, $slot)
-    {
-        $where['id'] = $id;
-        $data['partner'] = $partner;
-        $data['slot'] = $slot;
-        return $this->UpdateData($data, $where);
     }
 
     //销毁纹章
-    public function destroy($data)
+    public function dData($tid, $emblem, $count = 1)
     {
 
-        //销毁数据
-        $where['id'] = $data['id'];
-        if (false === $this->DeleteData($where)) {
+        //id为0或数量为0
+        if (!($emblem > 0)) {
+            return true;
+        }
+
+        //sql
+        $table = $this->getName($tid, self::TABLE_NAME);
+        $sql = "update `{$table}` set `count` = `count` - {$count},`total` = `total` - {$count} where `tid`='{$tid}' && `emblem`='{$emblem}';";
+        if (false === $this->execute($sql)) {
             return false;
         }
 
-        //记录
-        D('LEmblem')->cLog($data);
+        //记录日志
+        D('LEmblem')->cLog($tid, $emblem, -$count);
+
+        //返回
         return true;
 
     }
 
-    //减少纹章
-    public function dec($tid, $index, $count)
+    //添加纹章(装备)
+    public function inc($tid, $emblem, $count = 1)
     {
-        $where['tid'] = $tid;
-        $where['index'] = $index;
-        $where['slot'] = 0;
-        $select = $this->where($where)->order('`id` ASC')->limit($count)->select();
-        foreach ($select as $value) {
-            if (false === $this->destroy($value)) {
-                return false;
-            }
+
+        //id为0或数量为0
+        if (!($emblem > 0)) {
+            return true;
         }
+
+        //查看背包理由没有该纹章
+        $countAll = $this->getCount($tid, $emblem);
+
+        //计算应该增加的值
+        $max = D('Static')->access('emblem', $emblem, 'stacking');
+
+        //已达最大值
+        if ($countAll == $max) {
+            return true;
+        }
+
+        //计算应该增加的值
+        if ($countAll + $count > $max) {
+            $count = $max - $countAll;
+        }
+
+        //增加
+        $where['tid'] = $tid;
+        $where['emblem'] = $emblem;
+        if (false === $this->table($this->getName($tid, self::TABLE_NAME))->IncreaseData($where, 'count', $count)) {
+            return false;
+        }
+
+        //返回
         return true;
+
     }
 
-    //获取未装备的纹章个数
-    public function getCount($tid, $index)
+    //减少纹章(装备)
+    public function dec($tid, $emblem, $count = 1)
     {
+
+        //id为0或数量为0
+        if (!($emblem > 0)) {
+            return true;
+        }
+
+        //减少
         $where['tid'] = $tid;
-        $where['index'] = $index;
-        $where['slot'] = 0;
-        return $this->where($where)->count();
+        $where['emblem'] = $emblem;
+        if (false === $this->table($this->getName($tid, self::TABLE_NAME))->DecreaseData($where, 'count', $count)) {
+            return false;
+        }
+
+        //返回
+        return true;
+
     }
 
 }

@@ -220,7 +220,6 @@ class UserApi extends BaseApi
     //获取客户端所需信息
     private function enter($tid)
     {
-
         if ($tid > 0) {
 
             //获取玩家数据

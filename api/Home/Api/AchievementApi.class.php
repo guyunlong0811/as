@@ -109,8 +109,7 @@ class AchievementApi extends BaseApi
                 break;
             case '22'://伙伴装备纹章数
                 $where['tid'] = $this->mTid;
-                $where['partner'] = array('gt', 0);
-                $select = D('GEmblem')->where($where)->getField('index', true);
+                $select = D('GEmblemEquip')->where($where)->getField('emblem', true);
                 foreach($select as $value){
                     $quality = D('Static')->access('emblem', $value, 'quality');
                     if($quality >= $config['target_value_1']){
@@ -137,8 +136,7 @@ class AchievementApi extends BaseApi
                 $count = D('GCount')->getAttr($this->mTid, 'silver_box_use');
                 break;
             case '29'://指定品质装备
-                $where['tid'] = $this->mTid;
-                $select = D('GEquip')->field(array('group', 'index'))->where($where)->select();
+                $select = D('GEquip')->getList($this->mTid, array('group', 'index'));
                 foreach($select as $value){
                     $quality = D('Static')->access('equipment', $value['group'], array($value['index'], 'quality'));
                     if($quality >= $config['target_value_1']){
@@ -148,7 +146,7 @@ class AchievementApi extends BaseApi
                 break;
             case '30'://指定品质套装
                 $where['tid'] = $this->mTid;
-                $select = D('GEquip')->field(array('group', 'index', 'partner_group'))->where($where)->order('`partner_group` ASC')->select();
+                $select = D('GEquip')->getList($this->mTid, array('group', 'index', 'partner_group'));
                 $partner = 0;
                 $flag = true;
                 foreach($select as $value){

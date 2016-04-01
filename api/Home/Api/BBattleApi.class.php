@@ -215,17 +215,7 @@ class BBattleApi extends BaseApi
         //查询伙伴基本信息
         $partnerArr = array_merge($partnerFightList, $partnerStarList);
         $fieldPartner = array('group', 'index', 'level', 'favour', 'force', 'skill_1_level', 'skill_2_level', 'skill_3_level', 'skill_4_level', 'skill_5_level', 'skill_6_level',);
-        $partnerSelect = D('GPartner')->getAll($tid, $fieldPartner, $partnerArr);
-
-        //获取伙伴武器信息
-        $equipList = D('GEquip')->getPartnersList($tid, $partnerArr);
-        $emblemList = D('GEmblem')->getPartnersList($tid, $partnerArr);
-        $partnerList = array();
-        foreach ($partnerSelect as $key => $value) {
-            $value['equip_list'] = $equipList[$value['group']];
-            $value['emblem_list'] = empty($emblemList[$value['group']]) ? array() : $emblemList[$value['group']];
-            $partnerList[] = $value;
-        }
+        $partnerList = D('GPartner')->getAll($tid, $fieldPartner, $partnerArr);
 
         //整理数据
         $info['partner_fight'] = $partnerFightList;

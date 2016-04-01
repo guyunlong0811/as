@@ -22,15 +22,7 @@ class PartnerApi extends BaseApi
         }
 
         //获取所有伙伴信息
-        $partnerList = D('GPartner')->getAll($this->mTid);
-        //获取伙伴武器信息
-        $list = array();
-        foreach ($partnerList as $key => $value) {
-            $value['equip_list'] = D('GEquip')->getAll($this->mTid, $value['group']);
-            $list[] = $value;
-        }
-        //返回
-        return $list;
+        return D('GPartner')->getAll($this->mTid);
     }
 
     //伙伴召唤
@@ -277,17 +269,8 @@ class PartnerApi extends BaseApi
             return false;
         }
 
-        //设置纹章标识
-        $return['is_emblem'] = 0;
-        $return['emblem_list'] = array();
-
         //是否有足够的材料
         for ($i = 1; $i <= 6; $i++) {
-
-            //是否有纹章
-            if($this->mBonusType[$awakeConfig['awake_' . $i . '_type']] == 'emblem'){
-                $return['is_emblem'] = 1;
-            }
 
             //材料是否足够
             if (false === $this->verify($awakeConfig['awake_' . $i . '_value_2'], $this->mBonusType[$awakeConfig['awake_' . $i . '_type']], $awakeConfig['awake_' . $i . '_value_1'])) {
@@ -318,13 +301,8 @@ class PartnerApi extends BaseApi
             return false;
         }
 
-        //如果消耗有纹章则返回列表
-        if($return['is_emblem'] == 1){
-            $return['emblem_list'] = D('GEmblem')->getAll($this->mTid);
-        }
-
         //返回
-        return $return;
+        return true;
     }
 
     //检查是否有技能开启

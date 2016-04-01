@@ -36,7 +36,7 @@ $config = array(
     'REDIS_CHAT_LEAGUE_ROW' => 20,//公会频道每页显示聊天数
     'REDIS_CHAT_NOTICE_ROW' => 20,//公告一次最多收取条数
 
-    'GAME_ID' => 1,      //游戏ID
+    'GAME_ID' => 2,      //游戏ID
     'LUA_URL' => './lua/',//LUA文件路径
 
     'DAILY_UTIME' => '03:00:00',

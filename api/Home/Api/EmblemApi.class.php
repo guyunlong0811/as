@@ -22,26 +22,9 @@ class EmblemApi extends BaseApi
     {
 
         //查看伙伴是否合法
-        if (!D('GPartner')->isExist($this->mTid, $_POST['partner'])) {
-            return false;
-        }
-
-        //获取数据
-        $data = D('GEmblem')->getRow($_POST['emblem_id']);
-        if (empty($data)) {
-            C('G_ERROR', 'emblem_not_exist');
-            return false;
-        }
-
-        //查看是否纹章是否属于自己
-        if ($data['tid'] != $this->mTid) {
-            C('G_ERROR', 'emblem_not_belong_player');
-            return false;
-        }
-
-        //查看纹章是否已经装备了
-        if ($data['slot'] > 0) {
-            C('G_ERROR', 'emblem_equip_already');
+        $partnerIndex = D('GPartner')->getAttr($this->mTid, $_POST['partner'], 'index');
+        if (empty($partnerIndex)) {
+            C('G_ERROR', 'partner_not_exist');
             return false;
         }
 
@@ -52,8 +35,20 @@ class EmblemApi extends BaseApi
             return false;
         }
 
+        //获取数据
+        $emblemInfo = D('GEmblemEquip')->getRow($this->mTid, $_POST['partner'], $_POST['slot']);
+        if ($emblemInfo['emblem'] == $_POST['emblem_id']) {
+            C('G_ERROR', 'emblem_equip_same');
+            return false;
+        }
+
+        //查询玩家拥有纹章总数
+        if (!$now = $this->verify(1, 'emblem', $_POST['emblem_id'])) {
+            return false;
+        }
+
         //查看伙伴槽位是否已经解锁
-        $partnerConfig = D('Static')->access('partner', D('GPartner')->getAttr($this->mTid, $_POST['partner'], 'index'));
+        $partnerConfig = D('Static')->access('partner', $partnerIndex);
         switch ($partnerConfig['emblem_' . $_POST['slot'] . '_activate_type']) {
             case '1'://伙伴等级
                 if (!$this->verify($partnerConfig['emblem_' . $_POST['slot'] . '_activate_value'], 'partnerLevel', $_POST['partner'])) {
@@ -73,7 +68,7 @@ class EmblemApi extends BaseApi
         }
 
         //获取纹章配置
-        $emblemConfig = D('Static')->access('emblem', $data['index']);
+        $emblemConfig = D('Static')->access('emblem', $_POST['emblem_id']);
 
         //查看佩戴限制
         for ($i = 1; $i <= 2; ++$i) {
@@ -82,6 +77,7 @@ class EmblemApi extends BaseApi
 
                 case '0'://无
                     break;
+
                 case '1'://等级
                     if (!$this->verify($emblemConfig['restrict_' . $i . '_value'], 'partnerLevel', $_POST['partner'])) {
                         return false;
@@ -101,14 +97,31 @@ class EmblemApi extends BaseApi
         //开始事务
         $this->transBegin();
 
-        //卸下已经装备的
-        if (false === D('GEmblem')->unload($this->mTid, $_POST['partner'], $_POST['slot'])) {
+        //扣除纹章
+        if (false === D('GEmblem')->dec($this->mTid, $_POST['emblem_id'])) {
             goto end;
         }
 
-        //装备所选
-        if (false === D('GEmblem')->equip($_POST['emblem_id'], $_POST['partner'], $_POST['slot'])) {
-            goto end;
+        //如果槽位上原来没有纹章
+        if (empty($emblemInfo)) {
+
+            //装备纹章
+            if (false === D('GEmblemEquip')->cData($this->mTid, $_POST['partner'], $_POST['slot'], $_POST['emblem_id'])) {
+                goto end;
+            }
+
+        } else {
+
+            //增加纹章
+            if (false === D('GEmblem')->inc($this->mTid, $emblemInfo['emblem'])) {
+                goto end;
+            }
+
+            //替换纹章
+            if (false === D('GEmblemEquip')->uData($this->mTid, $_POST['partner'], $_POST['slot'], $_POST['emblem_id'])) {
+                goto end;
+            }
+
         }
 
         //结束事务
@@ -127,13 +140,30 @@ class EmblemApi extends BaseApi
     public function unload()
     {
 
-        //查看伙伴是否合法
-        if (!D('GPartner')->isExist($this->mTid, $_POST['partner'])) {
+        //获取数据
+        $emblemInfo = D('GEmblemEquip')->getRow($this->mTid, $_POST['partner'], $_POST['slot']);
+        if (empty($emblemInfo)) {
+            C('G_ERROR', 'emblem_not_equip');
             return false;
         }
 
+        //开始事务
+        $this->transBegin();
+
+        //增加纹章
+        if (false === D('GEmblem')->inc($this->mTid, $emblemInfo['emblem'])) {
+            goto end;
+        }
+
         //卸下
-        if (false === D('GEmblem')->unload($this->mTid, $_POST['partner'], $_POST['slot'])) {
+        if (false === D('GEmblemEquip')->dData($this->mTid, $_POST['partner'], $_POST['slot'])) {
+            goto end;
+        }
+
+        //结束事务
+        C('G_TRANS_FLAG', true);
+        end:
+        if (!$this->transEnd()) {
             return false;
         }
 
@@ -146,32 +176,24 @@ class EmblemApi extends BaseApi
     public function decompose()
     {
 
-        //获取数据
-        $data = D('GEmblem')->getRow($_POST['emblem_id']);
-        if (empty($data)) {
-            C('G_ERROR', 'emblem_not_exist');
+        //查询玩家拥有纹章总数
+        if (!$now = $this->verify($_POST['count'], 'emblem', $_POST['emblem_id'])) {
             return false;
         }
 
-        //查看是否纹章是否属于自己
-        if ($data['tid'] != $this->mTid) {
-            C('G_ERROR', 'emblem_not_belong_player');
-            return false;
-        }
+        //获取配置信息
+        $emblemConfig = D('Static')->access('emblem', $_POST['emblem_id']);
 
         //开始事务
         $this->transBegin();
 
-        //获取静态数据
-        $emblemConfig = D('Static')->access('emblem', $data['index']);
-
-        //加宝箱
-        if (false === $item = $this->produce('box', $emblemConfig['decompose'], 1)) {
+        //开宝箱
+        if (false === $item = D('GItem')->openBox($this->mTid, $emblemConfig['decompose'], $_POST['count'], 1, 'total')) {
             goto end;
         }
 
-        //销毁纹章
-        if (false === D('GEmblem')->destroy($data)) {
+        //减少纹章
+        if (false === $this->recover('emblem', $_POST['emblem_id'], $_POST['count'])) {
             goto end;
         }
 
@@ -191,32 +213,24 @@ class EmblemApi extends BaseApi
     public function sell()
     {
 
-        //获取数据
-        $data = D('GEmblem')->getRow($_POST['emblem_id']);
-        if (empty($data)) {
-            C('G_ERROR', 'emblem_not_exist');
+        //查询玩家拥有纹章总数
+        if (!$now = $this->verify($_POST['count'], 'emblem', $_POST['emblem_id'])) {
             return false;
         }
 
-        //查看是否纹章是否属于自己
-        if ($data['tid'] != $this->mTid) {
-            C('G_ERROR', 'emblem_not_exist');
-            return false;
-        }
+        //获取配置信息
+        $emblemConfig = D('Static')->access('emblem', $_POST['emblem_id']);
 
         //开始事务
         $this->transBegin();
 
-        //获取静态数据
-        $emblemConfig = D('Static')->access('emblem', $data['index']);
-
         //加钱
-        if (!$this->produce('gold', $emblemConfig['sell_gold'])) {
+        if (!$this->produce('gold', $emblemConfig['sell_gold'] * $_POST['count'])) {
             goto end;
         }
 
-        //销毁纹章
-        if (false === D('GEmblem')->destroy($data)) {
+        //减少纹章
+        if (false === $this->recover('emblem', $_POST['emblem_id'], $_POST['count'])) {
             goto end;
         }
 
@@ -243,10 +257,10 @@ class EmblemApi extends BaseApi
         $goldNow = $gGoldNow = D('GTeam')->getAttr($this->mTid, 'gold');
 
         //获取玩家道具情况
-        $itemList = $gItemList = D('GItem')->getList($this->mTid);
+        $gItemList = D('GItem')->getList($this->mTid);
 
         //获取玩家纹章情况
-        $emblemList = $gEmblemList = D('GEmblem')->getList($this->mTid);
+        $gEmblemList = D('GEmblem')->getList($this->mTid);
 
         //初始化消耗物品
         $needGold = 0;
@@ -279,7 +293,7 @@ class EmblemApi extends BaseApi
                         break;
 
                     case '2'://扣除纹章
-                        if (!D('GEmblem')->dec($this->mTid, $k, $val)) {
+                        if (!$this->recover('emblem', $k, $val)) {
                             goto end;
                         }
                         break;
@@ -309,7 +323,7 @@ class EmblemApi extends BaseApi
 
         //返回
         D('GCount')->incAttr($this->mTid, 'emblem_combine');
-        return D('GEmblem')->getAll($this->mTid);
+        return true;
 
     }
 

@@ -186,6 +186,8 @@ return array(
         'emblem_slot_max' => array('code' => 4103, 'message' => '纹章槽位已满',),
         'emblem_not_enough' => array('code' => 4104, 'message' => '纹章不足',),
         'emblem_material_not_enough' => array('code' => 4105, 'message' => '纹章合成材料不足',),
+        'emblem_equip_same' => array('code' => 4106, 'message' => '装备纹章与当前纹章相同',),
+        'emblem_not_equip' => array('code' => 4107, 'message' => '没有装备纹章',),
 
         'star_not_enough' => array('code' => 4201, 'message' => '星数不足',),
         'star_partner_equip_already' => array('code' => 4202, 'message' => '伙伴已经在星位上',),

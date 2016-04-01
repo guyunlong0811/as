@@ -55,6 +55,8 @@ return array(
         'emblem_decompose' => array('code' => 3101, 'message' => '纹章分解',),
         'emblem_sell' => array('code' => 3102, 'message' => '纹章出售',),
         'emblem_combine' => array('code' => 3103, 'message' => '纹章合成',),
+        'emblem_equip' => array('code' => 3105, 'message' => '纹章装备',),
+        'emblem_unload' => array('code' => 3106, 'message' => '纹章卸下',),
         'star_levelup' => array('code' => 3201, 'message' => '星位升级',),
         'star_reset' => array('code' => 3202, 'message' => '星位重置',),
         'star_baptize_gold' => array('code' => 3203, 'message' => '星位金币洗炼',),

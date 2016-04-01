@@ -9,8 +9,8 @@ define('DB_STATIC_NAME', 'ssgStatic');
 define('DB_STATIC_CHARSET', 'utf8');
 
 //URL
-define('WEB_URL', 'http://localhost/zettaiServer/api.php');
-define('UC_URL', 'http://localhost/FGUserCenter/user.php');
+define('WEB_URL', 'http://sbssgapi.forevergame.com/api.php');
+define('UC_URL', 'http://sbuc.forevergame.com/user.php');
 
 //ip_white
 define('IP_WHITE', '210.22.178.170');//多个IP用#号隔开

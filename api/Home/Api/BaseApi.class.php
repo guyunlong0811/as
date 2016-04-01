@@ -543,7 +543,7 @@ class BaseApi extends Controller
             case 'contribution'://公会贡献值
                 return D('GLeagueTeam')->decAttr($this->mTid, 'contribution', $params1, $before, $params2);
             case 'emblem'://纹章
-                return D('GEmblem')->dec($this->mTid, $params1, $params2);
+                return D('GEmblem')->dData($this->mTid, $params1, $params2);
             case 'fund':
                 return D('GLeague')->decAttr($params2, 'fund', $params1, $before);
         }

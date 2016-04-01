@@ -85,20 +85,10 @@ class GItemModel extends BaseModel
             //计算增加数量
             $count = $count > $max ? $max : $count;
 
-            //查询道具的基本属性
-            $itemConfig = D('Static')->access('item', $item);
-
-//            //限制时间
-//            $dtime = 0;
-//            if ($itemConfig['need_time_type'] == '2') {//道具时间限制
-//                $dtime = strtotime($itemConfig['need_time_value']);//销毁时间
-//            }
-
             //增加
             $add['tid'] = $tid;
             $add['item'] = $item;
             $add['count'] = $count;
-//            $add['dtime'] = $dtime;
             if (false === $this->table($this->getName($tid, self::TABLE_NAME))->CreateData($add)) {
                 return false;
             }
@@ -156,23 +146,9 @@ class GItemModel extends BaseModel
 
     }
 
-    //获取过期道具
-    /*public function getExpire($now = null)
-    {
-        //查询所有过期物品
-        $now = is_null($now) ? time() : $now;
-        $where = "`dtime`>0 && `dtime`<{$now}";
-        $select = $this->where($where)->select();
-        if (empty($select)) {
-            return array();
-        }
-        return $select;
-    }*/
-
     //开宝箱
-    public function openBox($tid, $box, $count = 1, $type = 1)
+    public function openBox($tid, $box, $count = 1, $type = 1, $ret = 'part')
     {
-
         //宝箱逻辑
         if ($count == 1 && $type == 1) {
             $open = D('SBox')->open1($box);
@@ -201,15 +177,23 @@ class GItemModel extends BaseModel
         }
 
         //增加物品
+        $totalList = array();
         foreach ($total as $type => $value) {
             foreach ($value as $id => $count) {
                 if (false === $this->addBoxBonus($tid, $type, $id, $count)) {
                     return false;
                 }
+                $arr['type'] = $type;
+                $arr['id'] = $id;
+                $arr['count'] = $count;
+                $totalList[] = $arr;
             }
         }
 
         //返回
+        if ($ret == 'total') {
+            return $totalList;
+        }
         return $list;
 
     }

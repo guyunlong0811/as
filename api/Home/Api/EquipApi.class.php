@@ -486,11 +486,9 @@ class EquipApi extends BaseApi
         }
 
         //覆盖
-        $where['tid'] = $this->mTid;
-        $where['group'] = $_POST['group'];
         $data = $enchantsInfo;
         unset($data['group']);
-        if (false === D('GEquip')->UpdateData($data, $where)) {
+        if (false === D('GEquip')->enchantCover($this->mTid, $_POST['group'], $data)) {
             return false;
         }
 

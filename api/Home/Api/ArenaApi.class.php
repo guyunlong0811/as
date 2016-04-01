@@ -121,9 +121,14 @@ class ArenaApi extends BEventApi
         //查询对手的伙伴信息
         $opponent = array();
         foreach ($defense as $key => $value) {
-            $opponent[$value['tid']] = D('GPartner')->getDisplayInfo($value['tid'], json_decode($value['partner'], true));
+            $partners = json_decode($value['partner'], true);
+            $partnerList = D('GPartner')->getDisplayInfo($value['tid'], $partners);
+            foreach ($partners as $val) {
+                $opponent[$value['tid']][] = $val != 0 ? $partnerList[(int)$val] : array('group' => 0);
+            }
         }
 //        dump($opponent);
+
         //整理数据
         $list = array();
         foreach ($rankList as $key => $value) {

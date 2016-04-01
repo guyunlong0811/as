@@ -1,4 +1,6 @@
 <?php
+use Think;
+
 /************************ 服务器 **************************/
 //获取服务器列表
 function get_server_list()
@@ -211,6 +213,9 @@ function curl_link($host, $method = 'get', $data = '', $cookie = '', $return = t
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, $return);
     curl_setopt($ch, CURLOPT_USERAGENT, $agent);
     $retData = curl_exec($ch);
+
+    Think\Log::record('CURL_CODE', 'DEBUG');
+    Think\Log::record(curl_getinfo($ch,CURLINFO_HTTP_CODE), 'DEBUG');
 //    dump(curl_getinfo($ch,CURLINFO_HTTP_CODE));
     curl_close($ch);
     return $retData;
@@ -324,9 +329,13 @@ function uc_link($params, $method)
     $post['params'] = $params;
     $post['sign'] = uc_sign_create($params, 'request');
     $post = json_encode($post);
+    Think\Log::record('CURL_POST', 'DEBUG');
+    Think\Log::record($post, 'DEBUG');
 
     //发送协议
     $json = curl_link(UC_URL . '?c=Router&a=request', 'post', $post);
+    Think\Log::record('CURL_RETURN', 'DEBUG');
+    Think\Log::record($json, 'DEBUG');
     if(empty($json)){
         C('G_ERROR', 'uc_curl_error');
         return false;

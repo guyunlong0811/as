@@ -311,7 +311,11 @@ return array(
         'Operate' => array(
 
             'notice' => array(
+                'isToken' => false,
                 'key' => 'list',
+                'params' => array(
+                    'channel_id' => array('type' => 'number',),
+                ),
             ),
 
             'service' => array(
@@ -519,6 +523,7 @@ return array(
             ),
 
             'equip' => array(
+                'behave' => 'emblem_equip',
                 'params' => array(
                     'emblem_id' => array('type' => 'number',),
                     'partner' => array('type' => 'number',),
@@ -527,6 +532,7 @@ return array(
             ),
 
             'unload' => array(
+                'behave' => 'emblem_unload',
                 'params' => array(
                     'partner' => array('type' => 'number',),
                     'slot' => array('type' => 'number',),
@@ -538,6 +544,7 @@ return array(
                 'behave' => 'emblem_decompose',
                 'params' => array(
                     'emblem_id' => array('type' => 'number',),
+                    'count' => array('type' => 'number', 'gt' => '0',),
                 ),
             ),
 
@@ -546,6 +553,7 @@ return array(
                 'behave' => 'emblem_sell',
                 'params' => array(
                     'emblem_id' => array('type' => 'number',),
+                    'count' => array('type' => 'number', 'gt' => '0',),
                 ),
             ),
 

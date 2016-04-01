@@ -6,7 +6,11 @@ use Think\Model;
 class GEquipModel extends BaseModel
 {
 
-    const TYPE = 2;
+    //拆表参数
+    const TABLE_NAME = 'g_equip_';
+    const TABLE_NUM = 10;
+    protected $autoCheckFields = false;
+
     protected $_auto = array(
         array('level', 0),
         array('extra_1_type', 0),
@@ -41,7 +45,7 @@ class GEquipModel extends BaseModel
         $add['group'] = $group;
         $add['index'] = $equipConfig['index'];
         $add['partner_group'] = $partnerGroup;
-        if (!$this->CreateData($add)) {
+        if (!$this->table($this->getName($tid, self::TABLE_NAME))->CreateData($add)) {
             return false;
         }
         return true;
@@ -55,7 +59,7 @@ class GEquipModel extends BaseModel
         $where['group'] = $group;
         $data['index'] = $target;
         $data['level'] = 0;
-        if (false === $this->UpdateData($data, $where)) {
+        if (false === $this->table($this->getName($tid, self::TABLE_NAME))->UpdateData($data, $where)) {
             return false;
         }
         //记录日志
@@ -68,7 +72,7 @@ class GEquipModel extends BaseModel
     {
         $where['tid'] = $tid;
         $where['group'] = $group;
-        if (!$this->IncreaseData($where, 'level', $after - $before)) {
+        if (!$this->table($this->getName($tid, self::TABLE_NAME))->IncreaseData($where, 'level', $after - $before)) {
             return false;
         }
         //记录日志
@@ -77,12 +81,14 @@ class GEquipModel extends BaseModel
     }
 
     //获取多伙伴数据
-    public function getPartnersList($tid, $partnerGroup)
+    public function getPartnersList($tid, $partners = array())
     {
         $field = array('partner_group', 'group', 'index', 'level', 'extra_1_type', 'extra_1_id', 'extra_1_value', 'extra_1_lock', 'extra_2_type', 'extra_2_id', 'extra_2_value', 'extra_2_lock', 'extra_3_type', 'extra_3_id', 'extra_3_value', 'extra_3_lock', 'extra_4_type', 'extra_4_id', 'extra_4_value', 'extra_4_lock',);
         $where['tid'] = $tid;
-        $where['partner_group'] = array('in', $partnerGroup);
-        $select = $this->field($field)->where($where)->select();
+        if (!empty($partners)) {
+            $where['partner_group'] = array('in', $partners);
+        }
+        $select = $this->table($this->getName($tid, self::TABLE_NAME))->field($field)->where($where)->select();
         $list = array();
         foreach ($select as $value) {
             $list[$value['partner_group']][] = $value;
@@ -96,7 +102,7 @@ class GEquipModel extends BaseModel
         $field = array('group', 'index', 'level', 'extra_1_type', 'extra_1_id', 'extra_1_value', 'extra_1_lock', 'extra_2_type', 'extra_2_id', 'extra_2_value', 'extra_2_lock', 'extra_3_type', 'extra_3_id', 'extra_3_value', 'extra_3_lock', 'extra_4_type', 'extra_4_id', 'extra_4_value', 'extra_4_lock',);
         $where['tid'] = $tid;
         $where['partner_group'] = $partnerGroup;
-        $select = $this->field($field)->where($where)->select();
+        $select = $this->table($this->getName($tid, self::TABLE_NAME))->field($field)->where($where)->select();
         if (empty($select)) {
             return array();
         }
@@ -108,7 +114,7 @@ class GEquipModel extends BaseModel
     {
         $where['tid'] = $tid;
         $where['group'] = $group;
-        $data = $this->getRowCondition($where, $field);
+        $data = $this->table($this->getName($tid, self::TABLE_NAME))->getRowCondition($where, $field);
         if (empty($data)) {
             C('G_ERROR', 'equip_not_exist');
             return false;
@@ -121,7 +127,7 @@ class GEquipModel extends BaseModel
     {
         $where['tid'] = $tid;
         $where['group'] = $group;
-        return $this->where($where)->count();
+        return $this->table($this->getName($tid, self::TABLE_NAME))->where($where)->count();
     }
 
     //锁定属性
@@ -130,7 +136,21 @@ class GEquipModel extends BaseModel
         $where['tid'] = $tid;
         $where['group'] = $group;
         $data['extra_' . $extra . '_lock'] = $status;
-        return $this->UpdateData($data, $where);
+        return $this->table($this->getName($tid, self::TABLE_NAME))->UpdateData($data, $where);
+    }
+
+    //获取数据列表
+    public function getList($tid, $field)
+    {
+        $where['tid'] = $tid;
+        return $this->table($this->getName($tid, self::TABLE_NAME))->field($field)->where($where)->order('partner_group')->select();
+    }
+
+    //附魔覆盖
+    public function enchantCover($tid, $group, $data){
+        $where['tid'] = $tid;
+        $where['group'] = $group;
+        return $this->table($this->getName($tid, self::TABLE_NAME))->UpdateData($data, $where);
     }
 
 }

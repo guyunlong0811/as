@@ -49,10 +49,9 @@ class TeamApi extends BaseApi
         $data['activity_pay_consume'] = A('Operate', 'Api')->getActivityCount();
         $data['pray_timed'] = A('PrayTimed', 'Api')->getInfo($this->mTid);
         $data['achievement'] = A('Achievement', 'Api')->getInfo($this->mTid);
+        $data['icon_list'] = $this->getIcon();
 
-        //活动图标顺序
-        $json = D('GParams')->getValue('EVENT_ICON');
-        $data['event_icon'] = json_decode($json, true);
+
         return $data;
     }
 
@@ -63,12 +62,26 @@ class TeamApi extends BaseApi
         $data['activity_pay_consume'] = A('Operate', 'Api')->getActivityCount();
 
         //活动图标顺序
-        $json = D('GParams')->getValue('EVENT_ICON');
-        $data['event_icon'] = json_decode($json, true);
+        $data['icon_list'] = $this->getIcon();
 
         $teamInfo = D('GTeam')->getAllInfo($this->mTid, $this->mSilence);
         $return = array_merge($data, $teamInfo);
         return $return;
+    }
+
+    //获取活动图标
+    private function getIcon()
+    {
+        //活动图标顺序
+        $json1 = D('GParams')->getValue('MAIN_ICON_1');
+        $json2 = D('GParams')->getValue('MAIN_ICON_2');
+        $json3 = D('GParams')->getValue('EVENT_ICON_1');
+        $json4 = D('GParams')->getValue('EVENT_ICON_2');
+        $data['bottom'] = json_decode($json1, true);
+        $data['right'] = json_decode($json2, true);
+        $data['top'] = json_decode($json3, true);
+        $data['left'] = json_decode($json4, true);
+        return $data;
     }
 
     //获取游戏币数

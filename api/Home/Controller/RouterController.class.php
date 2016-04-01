@@ -114,6 +114,8 @@ class RouterController extends Controller
         //执行协议逻辑
         Think\Log::record('API_START', 'DEBUG');
         $this->mResult = A($c, 'Api')->$a();
+        $rs = !$this->mResult ? 'false' : 'true';
+        Think\Log::record($rs, 'DEBUG');
         Think\Log::record('API_END', 'DEBUG');
 
         //执行附加功能
