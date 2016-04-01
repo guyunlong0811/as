@@ -213,9 +213,8 @@ class BaseApi extends Controller
         }
 
         $now = $this->schedule($type, $params);
-        if ($need <= $now) {
+        if ($need <= $now)//如果够了
             return $now;
-        }
 
         switch ($type) {
             case 'gold':
@@ -553,17 +552,17 @@ class BaseApi extends Controller
     protected function bonus($config, $prefix = '')
     {
         //单一奖励情况
-        if (isset($config[$prefix . 'bonus_type'])) {
+        if(isset($config[$prefix . 'bonus_type'])){
             if ($config[$prefix . 'bonus_type'] > 0) {
                 if (!$this->produce($this->mBonusType[$config[$prefix . 'bonus_type']], $config[$prefix . 'bonus_value_1'], $config[$prefix . 'bonus_value_2'])) {
                     return false;
-                } else {
+                }else{
                     return true;
                 }
-            } else {
+            }else{
                 return true;
             }
-        } else {
+        }else{
 
             //多奖励情况
             $flag = true;//是否全部成功
@@ -572,7 +571,7 @@ class BaseApi extends Controller
             for ($i = 1; $i <= 10; ++$i) {
 
                 //如果没有则结束
-                if (!isset($config[$prefix . 'bonus_' . $i . '_type'])) {
+                if(!isset($config[$prefix . 'bonus_' . $i . '_type'])){
                     break;
                 }
 
@@ -593,11 +592,10 @@ class BaseApi extends Controller
     }
 
     //计算exchange金额
-    protected function exchangeMoney($exchange, $count)
-    {
+    protected function exchangeMoney($exchange, $count){
         //查询购买需要的货币
         $buyConfig = D('Static')->access('exchange', $exchange);
-        if (empty($buyConfig)) {
+        if(empty($buyConfig)){
             return false;
         }
         if (isset($buyConfig[$count])) {

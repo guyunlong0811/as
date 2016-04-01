@@ -316,7 +316,12 @@ class RouterController extends Controller
                 if (!empty($pt)) {
                     $this->mRespond['error']['pt'] = $pt;
                 }
-//            }
+                //eRating错误
+                $eRating = C('G_ERATING_ERROR');
+                if (!empty($eRating)) {
+                    $this->mRespond['error']['eRating'] = $eRating;
+                }
+            }
             if (!empty($this->mRequest) && in_array($this->mRespond['error']['code'], $this->mErrorReport) && in_array(APP_STATUS, $this->mErrorApp)) {
 
                 //发送邮件

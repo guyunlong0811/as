@@ -432,17 +432,13 @@ class TestController extends Controller
                 'getList' => array(),
 
                 'sell' => array(
-                    'item' => 1011001,
+                    'item' => 50100001,
                     'count' => 1,
                 ),
 
-                'sellAll' => array(
-                    'list' => '',
-                ),
-
                 'toUse' => array(
-                    'item' => 1011001,
-                    'count' => -1,
+                    'item' => 20205001,
+                    'count' => 1,
                     'partner' => 0,
                 ),
 
@@ -1552,6 +1548,145 @@ class TestController extends Controller
 
         echo 'success';
 
+    }
+
+    //快速测试
+    public function fast_test()
+    {
+        change_db_config(C('G_SID'), 'all');
+
+        //eRating
+//        $body = array(
+//            'data' => '&lt;UserIP4&gt;3232238153&lt;Port&gt;51908&lt;Token&gt;ca6f7de7156fc846401f2e739d267246&lt;deviceId&gt;828600D4-E57C-476C-BAC7-6819EF954EE8&lt;UN&gt;2050493425&lt;ClientType&gt;1&lt;SdkVersion&gt;&lt;UnixTime&gt;1426673301&lt;CP_ID&gt;91&lt;Pad&gt;&lt;ADID&gt;',
+//        );
+//        $eRating = D('ERating')->index(10003802, C('G_SID'), $body);
+//        dump($eRating);
+//        D('GTeam')->incAttr(101000106, 'diamond_free', 100);
+//        D('GTeam')->decAttr(101000106, 'diamond', 100);
+
+        //竞技场匹配规则
+//        $rs = array();
+//        for($i=1;$i<=10000;$i++){
+//            $rs[] = A('Arena', 'Api')->getRandRank();
+//
+//        }
+//        dump($rs);
+
+        return;
+    }
+
+    //宝箱测试
+    public function box()
+    {
+        set_time_limit(0);
+        ini_set('memory_limit', '1024M');
+        $index = $_GET['index'];
+        $count = $_GET['count'];
+        //测试宝箱
+//        $rs = D('SBox')->open(11000,100);
+//        dump($rs);
+
+        //eRating测试
+//        D('ERating')->activity(20001, 10000, 1, 1, 101000001);
+
+        //eRating数据生成
+//        $filename = "1.txt";
+//        $handle = fopen($filename, "r");
+//        $contents = fread($handle, filesize ($filename));
+//        fclose($handle);
+//
+//        $arr = explode("\r\n", $contents);
+//
+//        $now = time();
+//        $sql = "insert into `linekong_command` (`command_id`,`channel_id`,`body`,`ctime`,`count`) values " . '<br>';
+//        foreach($arr as $value){
+//            if(empty($value)){break;}
+//            $json = json_decode(json_encode(simplexml_load_string($value)), true);
+//            $body = json_encode($json['body']);
+//            $sql .= "('{$json['header']['command_id']}','20001','{$body}','{$now}','0')," . '<br>';
+////            break;
+//        }
+//        $sql = substr($sql, 0, -1) . ';';
+//        echo $sql;
+//        D('LinekongCommand')->execute($sql);
+
+
+    }
+
+    public function getERating()
+    {
+        $xml = '<?xml version="1.0" encoding="utf-8"?>';
+
+        $xml .= '<agip>';
+        $xml .= '<header>';
+        $xml .= '<command_id>20003512</command_id>';
+        $xml .= '<game_id>120</game_id>';
+        $xml .= '<gateway_id>120001</gateway_id>';
+        $xml .= '</header>';
+
+        $xml .= '<body>';
+        $xml .= '<result_code>1</result_code>';
+
+        $xml .= '<activity_info_list>';
+
+        $xml .= '<activity_info>';
+        $xml .= '<activity_id>1</activity_id>';
+        $xml .= '<activity_desc>活动描述1</activity_desc>';
+        $xml .= '<item_info_list>';
+        $xml .= '<item_info>';
+        $xml .= '<item_code>101011001</item_code>';
+        $xml .= '<item_num>10</item_num>';
+        $xml .= '</item_info>';
+        $xml .= '<item_info>';
+        $xml .= '<item_code>101012001</item_code>';
+        $xml .= '<item_num>5</item_num>';
+        $xml .= '</item_info>';
+        $xml .= '<item_info>';
+        $xml .= '<item_code>300001004</item_code>';
+        $xml .= '<item_num>1</item_num>';
+        $xml .= '</item_info>';
+        $xml .= '<item_info>';
+        $xml .= '<item_code>200003001</item_code>';
+        $xml .= '<item_num>10000</item_num>';
+        $xml .= '</item_info>';
+        $xml .= '</item_info_list>';
+        $xml .= '<begin_time>1400000000</begin_time>';
+        $xml .= '<end_time>1500000000</end_time>';
+        $xml .= '</activity_info>';
+
+        $xml .= '<activity_info>';
+        $xml .= '<activity_id>2</activity_id>';
+        $xml .= '<activity_desc>活动描述2</activity_desc>';
+        $xml .= '<item_info_list>';
+        $xml .= '<item_info>';
+        $xml .= '<item_code>4011001</item_code>';
+        $xml .= '<item_num>10</item_num>';
+        $xml .= '</item_info>';
+        $xml .= '<item_info>';
+        $xml .= '<item_code>4011002</item_code>';
+        $xml .= '<item_num>5</item_num>';
+        $xml .= '</item_info>';
+        $xml .= '<item_info>';
+        $xml .= '<item_code>300001003</item_code>';
+        $xml .= '<item_num>1</item_num>';
+        $xml .= '</item_info>';
+        $xml .= '<item_info>';
+        $xml .= '<item_code>200003002</item_code>';
+        $xml .= '<item_num>10000</item_num>';
+        $xml .= '</item_info>';
+        $xml .= '</item_info_list>';
+        $xml .= '<begin_time>1400000000</begin_time>';
+        $xml .= '<end_time>1500000000</end_time>';
+        $xml .= '</activity_info>';
+
+        $xml .= '</activity_info_list>';
+
+        $xml .= '</body>';
+        $xml .= '</agip>';
+
+        $arr = json_decode(json_encode(simplexml_load_string($xml)), true);
+//        dump($arr);
+        return $arr['body'];
     }
 
     public function channelCash()

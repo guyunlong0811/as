@@ -110,7 +110,7 @@ class PayApi extends BaseApi
         //返回回掉地址
         $serverList = get_server_list();
         $return['callback'] = $serverList[C('G_SID')]['channel'][$this->mSessionInfo['channel_id']]['callback'];
-        $return['gateway_id'] = C('G_SID');
+        $return['gateway_id'] = $serverList[C('G_SID')]['eRating']['gateway_id'];
 
         //返回
         return $return;
@@ -428,6 +428,20 @@ class PayApi extends BaseApi
 
         //删除订单
         D('GOrder')->DeleteData($where);
+
+        //发送活动协议
+        $keys = D('Predis')->cli('game')->keys('s:*:' . $orderInfo['tid']);
+        if(!empty($keys)){
+
+            //获取用户channel_uid
+            $channelUid = D('Predis')->cli('game')->hget($keys[0], 'channel_uid');
+
+            //调用活动接口
+            $team = D('GTeam')->getRow($orderInfo['tid'], array('tid', 'role_id', 'level', 'channel_id'));//获取用户信息
+
+            //发送协议
+            D('ERating')->activity($team['channel_id'], $channelUid, $team['role_id'], $team['level'], $team['tid']);
+        }
 
         //返回
         return $orderStatus;

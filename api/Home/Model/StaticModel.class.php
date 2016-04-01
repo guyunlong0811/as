@@ -204,6 +204,9 @@ class StaticModel extends BaseModel
                         case 'enchant_skill':
                             $this->mTable[$this->mModel][$value['group']][$value['index']] = $value;
                             break;
+						case 'item_lk':
+                        	$config[] = $value['index'];
+                        	break;
                         //默认
                         default:
                             $this->mTable[$this->mModel][$value['index']] = $value;

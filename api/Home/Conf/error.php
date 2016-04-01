@@ -57,6 +57,7 @@ return array(
         //第三方平台错误
         'platform_login_error' => array('code' => 901, 'message' => '平台登录失败',),
         'channel_not_exist' => array('code' => 902, 'message' => '渠道不存在',),
+        'linekong_error' => array('code' => 903, 'message' => '蓝港eRating返回错误',),
 
         /********************用户中心********************/
 

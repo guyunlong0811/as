@@ -52,62 +52,25 @@ class UserApi extends BaseApi
 
             default:
 
-                //获取配置文件
-                require_once(COMMON_PATH . 'Common/oksdk/common.inc.php');
+                //获取USER_ID
+                $ip = D('ERating')->getIP();//计算ip
+                $port = D('ERating')->getPort();//获取玩家端口
+                $ClientType = D('ERating')->getClientOS($_POST['channel_id']);//确定客户端类型
+                $list = get_server_list();
+                $code = $list[C('G_SID')]['channel'][$_POST['channel_id']]['code'];//获取渠道代码
 
-                //制造post数据
-                $post['interface'] = 'UserLogin';
-                $post['uid'] = $_POST['channel_uid'];
-                $post['token'] = $_POST['channel_token'];
-                $post['client_ip'] = get_ip();
-                $post['unix_time'] = time();
-                $str = $post['unix_time'] . '&' . $post['uid'] . '&' . OKSDK_APP_KEY . '&' . $post['token'];
-                $post['sign'] = md5($str);
+                //拼字符串
+                $data = "<UserIP4>{$ip}<Port>{$port}<Token>{$_POST['channel_token']}<UN>{$_POST['channel_uid']}<ClientType>{$ClientType}<SdkVersion><UnixTime>" . time() . "<CP_ID>{$code}<Pad><ADID>{$_POST['adid']}";
+                $body = array(
+                    'data' => htmlspecialchars($data),
+                );
 
-                //获取登录请求地址
-                $serverList = get_server_list();
-                $serverList = $serverList[C('G_SID')];
-                $host = '';
-                foreach ($serverList['channel'] as $value) {
-                    if ($value['channel_id'] == $_POST['channel_id']) {
-                        $host = $value['user_login'];
-                        break;
-                    }
-                }
-
-                //平台出错
-                if ($host == '') {
-                    C('G_ERROR', 'channel_not_exist');
+                //发送eRating协议
+                if (false === $eRating = D('ERating')->index(10003802, C('G_SID'), $_POST['channel_id'], $body)) {
                     return false;
                 }
-
-                //发送请求
-                $jsonReturn = curl_link($host, 'post', json_encode($post));
-
-                //获取返回
-                $loginInfo = json_decode($jsonReturn, true);
-                if ($loginInfo['result_code'] != 1) {
-                    C('G_ERROR', 'platform_login_error');
-                    C('G_DEBUG_PT_ERROR', $loginInfo);
-                    return false;
-                } else {
-                    $_POST['channel_uid'] = $channelInfo['id'] = $loginInfo['uid'];
-                }
-
-
-            /*
-            //安卓360
-            case '29001':
-                $rs = require_once(COMMON_PATH . 'Common/qihoo/user.php');
-                $channelInfo = json_decode($rs, true);
-                if (!isset($channelInfo['id'])) {
-                    C('G_ERROR', 'platform_login_error');
-                    return false;
-                } else {
-                    $_POST['channel_uid'] = $channelInfo['id'];
-                }
-                break;
-            */
+                $_POST['channel_uid'] = $channelInfo['user_id'] = $eRating['user_id'];
+                $channelInfo['user_name'] = $eRating['user_name'];
 
         }
         if (!$return = $this->toLogin('fast')) {
@@ -164,7 +127,40 @@ class UserApi extends BaseApi
         //无角色
         if ($teamCount == 0) {
 
-            //查询服务器是否允许建新号
+        //获取数据
+        $allData = array();
+        if ($data['tid'] > 0) {
+            //获取账户信息
+            $allData = A('Team', 'Api')->getMainInfo($data['tid'], $return['silence']);
+
+            //合并信息
+            $data = $data + $allData;
+
+            //创建eRating协议(登录)
+            $body = array(
+                'server_id' => C('G_SID'),
+                'user_id' => $_POST['channel_uid'],
+                'role_id' => $data['team']['role_id'],
+                'level' => $data['team']['level'],
+                'gender' => 0,
+                'occupation_id' => 0,
+                'corps_id' => 0,
+                'community_id' => 0,
+                'client_port' => D('ERating')->getPort(),
+                'client_ip' => D('ERating')->getIP(),
+                'client_type' => D('ERating')->getClientOS($_POST['channel_id']),
+                'client_mac' => $_POST['mac'],
+                'hardware_sn1' => '',
+                'hardware_sn2' => '',
+                'uddi' => $_POST['udid'],
+                'model_version' => '',
+                'ldid' => '',
+            );
+            D('LinekongCommand')->cData(10003119, $_POST['channel_id'], $body);
+            D('ERating')->activity($_POST['channel_id'], $_POST['channel_uid'], $data['team']['role_id'], $data['team']['level'], $data['tid']);
+
+        } else {
+            //查询服务器是否可以进入
             if ($this->mServer[C('G_SID')]['channel'][$_POST['channel_id']]['type'] == '-2') {
                 C('G_ERROR', 'server_close_reg');
                 return false;
@@ -310,6 +306,26 @@ class UserApi extends BaseApi
             return false;
         }
 
+        //eRating
+        $body = array(
+            'user_id' => D('Predis')->cli('game')->hget($this->mSessionKey, 'channel_uid'),
+            'role_name' => $_POST['nickname'],
+            'role_gender' => 1,
+            'role_occupation' => 1,
+            'initial_level' => 1,
+            'user_ip' => D('ERating')->getIP(),
+            'user_port' => D('ERating')->getPort(),
+            'community_id' => 0,
+        );
+
+        //发送eRating协议
+        if (false === $eRating = D('ERating')->index(10003102, C('G_SID'), $_POST['channel_id'], $body)) {
+            return false;
+        }
+
+        //获取角色ID
+        $roleId = $eRating['role_id'];
+
         //查询是否存在预创建帐号
         $bool = D('Predis')->cli('game')->exists('pre');
         $pre = $bool ? D('Predis')->cli('game')->incr('pre') : null;
@@ -340,7 +356,7 @@ class UserApi extends BaseApi
             $this->transBegin();
 
             //创建角色
-            if (false === $tid = D('GTeam')->cData($this->mUid, $_POST['nickname'], $_POST['channel_id'], $teamConfig)) {
+            if (false === $tid = D('GTeam')->cData($this->mUid, $_POST['nickname'], $_POST['channel_id'], $teamConfig, $roleId)) {
                 goto end;
             }
 
@@ -387,12 +403,15 @@ class UserApi extends BaseApi
 //            if($teamConfig['init_gold'] > 0)D('LTeam')->cLog($tid,'gold',$teamConfig['init_gold'],0);
 //            if($teamConfig['init_fame'] > 0)D('LTeam')->cLog($tid,'fame',$teamConfig['init_fame'],0);
 
+            $level = $teamConfig['init_level'];
+
         } else {
 
-            //使用预创建帐号
+        	//使用预创建帐号
             if (false === D('GTeam')->usePreCreate($tid, $this->mUid, $_POST['nickname'], $_POST['channel_id'])) {
                 return false;
             }
+            $level = D('GTeam')->getAttr($tid, 'level');
 
         }
 
@@ -412,6 +431,28 @@ class UserApi extends BaseApi
         D('Predis')->cli('game')->del($this->mSessionKey);
         $this->mSessionKey = 's:' . $tid;
         D('Predis')->cli('game')->set('t:' . $this->mToken, $tid);
+
+        //创建eRating协议(登录)
+        $body = array(
+            'server_id' => C('G_SID'),
+            'user_id' => D('Predis')->cli('game')->hget($this->mSessionKey, 'channel_uid'),
+            'role_id' => $roleId,
+            'level' => $level,
+            'gender' => 0,
+            'occupation_id' => 0,
+            'corps_id' => 0,
+            'community_id' => 0,
+            'client_port' => D('ERating')->getPort(),
+            'client_ip' => D('ERating')->getIP(),
+            'client_type' => D('ERating')->getClientOS($_POST['channel_id']),
+            'client_mac' => $_POST['mac'],
+            'hardware_sn1' => '',
+            'hardware_sn2' => '',
+            'uddi' => $_POST['udid'],
+            'model_version' => '',
+            'ldid' => '',
+        );
+        D('LinekongCommand')->cData(10003119, $_POST['channel_id'], $body);
 
         //返回
         return A('Team', 'Api')->getMainInfo($tid, $this->mSilence);

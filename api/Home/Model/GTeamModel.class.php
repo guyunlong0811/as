@@ -299,6 +299,30 @@ class GTeamModel extends BaseModel
 
         //记录日志
         D('LTeam')->cLog($tid, $attr, $value, $before);//日志
+
+        //如果加的是免费钻石则添加蓝港通知
+        if($attr == 'diamond_free'){
+            //查询数据
+            $field = array('role_id', 'channel_id');
+            $row = $this->getRow($tid, $field);
+            $serverList = get_server_list();
+            $detailId = $serverList[C('G_SID')]['eRating']['gateway_id'];
+            $lkUserId = C('LK_USER_ID');
+            if(empty($lkUserId)){
+                $sessionKey = 's:' . C('G_TOKEN') . ':' . $tid;
+                $lkUserId = D('Predis')->cli('game')->hget($sessionKey, 'channel_uid');
+            }
+            $body = array(
+                'detail_id' => (int)$detailId,
+                'user_id' => $lkUserId,
+                'role_id' => $row['role_id'],
+                'subject_id' => 6,
+                'amount' => $value,
+                'add_time' => time(),
+                'source' => C('G_BEHAVE'),
+            );
+            D('LinekongCommand')->cData(10003412, $row['channel_id'], $body);
+        }
         return true;
     }
 
@@ -338,9 +362,36 @@ class GTeamModel extends BaseModel
                 }
                 //扣除水晶
                 $row = $this->getRow($tid, array('diamond_pay', 'diamond_free'));
+                $serverList = get_server_list();
+                $detailId = $serverList[C('G_SID')]['eRating']['gateway_id'];
+                $sessionKey = 's:' . C('G_TOKEN') . ':' . $tid;
+                $lkUserId = D('Predis')->cli('game')->hget($sessionKey, 'channel_uid');
+                $body = array(
+                    'detail_id' => (int)$detailId,
+                    'user_id' => $lkUserId,
+                    'role_id' => $row['role_id'],
+                    'role_gender' => 0,
+                    'role_occupation' => 0,
+                    'role_level' => $row['level'],
+                    'rating_id' => $serverList[C('G_SID')]['eRating']['gateway_id'],
+                    'ib_code' => C('G_BEHAVE'),
+                    'package_flag' => 1,
+                    'count' => 1,
+                    'pay_time' => time(),
+                    'user_ip' => D('ERating')->getIP(),
+                    'price' => $value,
+                    'discount_price' => $value,
+                    'subject_info_list' => array(
+                        'subject_info' => array()
+                    ),
+                );
                 if ($row['diamond_free'] >= $value) {//免费水晶足够
                     $attr = 'diamond_free';
                     $before = $row['diamond_free'];
+                    $body['subject_info_list']['subject_info'][] = array(
+                        'subject_id' => 6,
+                        'sub_amount' => $value,
+                    );
                 } else if ($row['diamond_free'] > 0 && $row['diamond_free'] < $value) {//有免费水晶，但是不够
                     if (false === $this->decAttr($tid, 'diamond_free', $row['diamond_free'], $row['diamond_free'])) {//扣除免费水晶
                         return false;
@@ -348,11 +399,24 @@ class GTeamModel extends BaseModel
                     if (false === $this->decAttr($tid, 'diamond_pay', $value - $row['diamond_free'], $row['diamond_pay'])) {//扣除付费水晶
                         return false;
                     }
+                    $body['subject_info_list']['subject_info'][] = array(
+                        'subject_id' => 6,
+                        'sub_amount' => $row['diamond_free'],
+                    );
+                    $body['subject_info_list']['subject_info'][] = array(
+                        'subject_id' => 5,
+                        'sub_amount' => $value - $row['diamond_free'],
+                    );
                     return true;
                 } else {//只有付费水晶
                     $attr = 'diamond_pay';
                     $before = $row['diamond_pay'];
+                    $body['subject_info_list']['subject_info'][] = array(
+                        'subject_id' => 5,
+                        'sub_amount' => $value,
+                    );
                 }
+                D('LinekongCommand')->cData(10003717, $row['channel_id'], $body);
                 break;
         }
 
@@ -465,10 +529,11 @@ class GTeamModel extends BaseModel
     }
 
     //使用预创建帐号
-    public function usePreCreate($tid, $uid, $nickname, $channelId)
+    public function usePreCreate($tid, $uid, $nickname, $channelId, $roleId = 0)
     {
         $where['tid'] = $tid;
         $where['uid'] = array('eq', 0);
+        $data['role_id'] = $roleId;
         $data['uid'] = $uid;
         $data['nickname'] = $nickname;
         $data['channel_id'] = $channelId;
