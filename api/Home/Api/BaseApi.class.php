@@ -684,9 +684,9 @@ class BaseApi extends Controller
         //加属性
         switch ($cashConfig['type']) {
             case '1'://水晶
-                if (!D('GTeam')->incAttr($tid, 'diamond_pay', $payValue)) {
-                    return false;
-                }
+//                if (!D('GTeam')->incAttr($tid, 'diamond_pay', $payValue)) {
+//                    return false;
+//                }
                 if (!D('GTeam')->incAttr($tid, 'diamond_free', $freeValue)) {
                     return false;
                 }
@@ -722,15 +722,24 @@ class BaseApi extends Controller
     //异常订单处理
     protected function abnormalDelivery($tid, $diamondPay, $isCount)
     {
-        if (!D('GTeam')->incAttr($tid, 'diamond_pay', $diamondPay)) {
-            return false;
-        }
+//        if (!D('GTeam')->incAttr($tid, 'diamond_pay', $diamondPay)) {
+//            return false;
+//        }
 
         //添加VIP积分
         if (!D('GVip')->pay($tid, $diamondPay / C('MONEY_RATE') * 100, 1, $isCount)) {
             return false;
         }
 
+        return true;
+    }
+
+    //刷新sdk信息
+    protected function refreshSDK($pf, $pfKey, $payToken)
+    {
+        D('Predis')->cli('game')->hset('s:' . $this->mTid, 'pf', $pf);
+        D('Predis')->cli('game')->hset('s:' . $this->mTid, 'pfkey', $pfKey);
+        D('Predis')->cli('game')->hset('s:' . $this->mTid, 'pay_token', $payToken);
         return true;
     }
 

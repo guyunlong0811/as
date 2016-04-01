@@ -86,10 +86,10 @@ class GMemberModel extends BaseModel
             }
         }
         //加会员充值水晶
-        $diamond = D('Static')->access('member', $type, 'diamond_bonus');
-        if (false === D('GTeam')->incAttr($tid, 'diamond_pay', $diamond)) {
-            return false;
-        }
+//        $diamond = D('Static')->access('member', $type, 'diamond_bonus');
+//        if (false === D('GTeam')->incAttr($tid, 'diamond_pay', $diamond)) {
+//            return false;
+//        }
         //返回
         return true;
     }

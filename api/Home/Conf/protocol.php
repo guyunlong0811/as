@@ -16,8 +16,12 @@ return array(
                     'channel_id' => array('type' => 'number',),
                     'channel_uid' => array('type' => 'string',),
                     'channel_token' => array('type' => 'string',),
+                    'channel_type' => array('type' => 'string',),
                     'adid' => array('type' => 'string',),
                     'tid' => array('type' => 'number',),
+                    'pf' => array('type' => 'string',),
+                    'pfkey' => array('type' => 'string',),
+                    'paytoken' => array('type' => 'string',),
                 ),
             ),
 
@@ -117,6 +121,14 @@ return array(
 
             'stay' => array(),
 
+            'refresh' => array(
+                'params' => array(
+                    'pf' => array('type' => 'string',),
+                    'pfkey' => array('type' => 'string',),
+                    'paytoken' => array('type' => 'string',),
+                ),
+            ),
+
         ),
 
         'Pay' => array(
@@ -149,6 +161,9 @@ return array(
                 'key' => 'status',
                 'params' => array(
                     'order_id' => array('type' => 'string', 'regex' => '/^[0-9_]{12,21}$/',),
+                    'pf' => array('type' => 'string',),
+                    'pfkey' => array('type' => 'string',),
+                    'paytoken' => array('type' => 'string',),
                 ),
             ),
 

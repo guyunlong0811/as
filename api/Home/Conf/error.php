@@ -55,8 +55,9 @@ return array(
         'activation_wrong_channel' => array('code' => 659, 'message' => '激活码不能在本渠道使用',),
 
         //第三方平台错误
-        'platform_login_error' => array('code' => 901, 'message' => '平台登录失败',),
+        'platform_login_error' => array('code' => 901, 'message' => '平台通讯失败，请重新登录',),
         'channel_not_exist' => array('code' => 902, 'message' => '渠道不存在',),
+        'msdk_error' => array('code' => 904, 'message' => '腾讯支付失败，请稍后再试',),
 
         /********************用户中心********************/
 

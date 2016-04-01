@@ -12,10 +12,10 @@ class RouterController extends Controller
     private $mRequest = array();//处理结果
     private $mRespond = array('id' => 0);//回应数据
     private $mErrorReport = array(
-        901, 903, 1001, 1004, 1101, 1102, 1103, 1104,
+        901, 1001, 1004, 1101, 1102, 1103, 1104, 1110,
     );
     private $mErrorApp = array(
-        'dev199', 'dev200',
+        'snda_yyb',
     );
 
     //发起请求

@@ -22,15 +22,34 @@ class TestController extends Controller
 
             'User' => array(
 
-                'fast' => array(
-                    'adid' => '1',
+                /*'fast' => array(
+                    'adid' => '0',
                     'base_version' => '1.0.0.0',
-                    'udid' => 'e05e175d4878543f79781bbc5a1d587b',
-                    'mac' => 'e05e175d4878543f79781bbc5a1d587b',
-                    'channel_id' => 1002,
-                    'channel_uid' => '',
-                    'channel_token' => '',
+                    'udid' => '9d761a067841d7e7231d4a440860ac18',
+                    'mac' => 'f4:8b:32:01:4a:31',
+                    'channel_id' => 22001,
+                    'channel_uid' => 'oenR_woBi4wTnnjsmPpyXCsSkomU',
+                    'channel_token' => 'OezXcEiiBSKSxW0eoylIeDrfkSUqWheZ2DrUja1G1LqQ7oqgulNlu8XJD4thDN1sBxzlGHBV8YF5pOmNwqAoCNu9khI5A_hOCzxXwB99TAUt5GSTcHXEPeALCBLfoiUGc3WFL_bdm9VyvPRASTLxfw',
                     'tid' => 0,
+                    'channel_type' => 1,
+                    'pf' => 'desktop_m_wx-73213123-android-73213123-wx-wx8e6ac36aa6213cdd-oenR_woBi4wTnnjsmPpyXCsSkomU',
+                    'pfkey' => 'f0399ca1d7712401349a2e6e322f91fc',
+                    'paytoken' => 'OezXcEiiBSKSxW0eoylIeDrfkSUqWheZ2DrUja1G1LqQ7oqgulNlu8XJD4thDN1sBxzlGHBV8YF5pOmNwqAoCNu9khI5A_hOCzxXwB99TAUt5GSTcHXEPeALCBLfoiUGc3WFL_bdm9VyvPRASTLxfw',
+                ),*/
+
+                'fast' => array(
+                    'adid' => '0',
+                    'base_version' => '1.0.0.0',
+                    'udid' => '9d761a067841d7e7231d4a440860ac18',
+                    'mac' => 'f4:8b:32:01:4a:31',
+                    'channel_id' => 22001,
+                    'channel_uid' => '2129A0123F937F16E80D6D3720013E07',
+                    'channel_token' => 'DDD54396790B054F78259BBC2A3E5D75',
+                    'tid' => 0,
+                    'channel_type' => 2,
+                    'pf' => 'desktop_m_qq-73213123-android-73213123-qq-1105054016-2129A0123F937F16E80D6D3720013E07',
+                    'pfkey' => '2e30c2e5daf51d4f0e0af2f9a647faca',
+                    'paytoken' => '9F11C0CD52FF39ABC2EC4191F360F97F',
                 ),
 
                 'login' => array(
@@ -1274,7 +1293,7 @@ class TestController extends Controller
         $this->test = isset($_GET['test']) ? $_GET['test'] : self::DEFAULT_UID;
 
         //测试服务器
-        $sid = isset($_GET['sid']) ? $_GET['sid'] : 104;
+        $sid = isset($_GET['sid']) ? $_GET['sid'] : 101;
         C('G_SID', $sid);
         change_db_config(C('G_SID'), 'all');
 
@@ -1356,9 +1375,9 @@ class TestController extends Controller
         echo '<div style="word-break:break-all;">';
         echo $this->host;
         echo '<hr />';
-//        echo '服务器返回字符串：<br />';
-//        echo $ret;
-//        echo '<hr />';
+        echo '服务器返回字符串：<br />';
+        echo $ret;
+        echo '<hr />';
         echo $post;
         echo '<hr />';
 
@@ -1424,8 +1443,12 @@ class TestController extends Controller
     //快速测试
     public function fast_test()
     {
-        C('G_SID', '0');
+        C('G_SID', '101');
         change_db_config(C('G_SID'), 'all');
+
+        D('Msdk')->test();
+
+
         return;
     }
 

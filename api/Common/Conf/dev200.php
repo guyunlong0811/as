@@ -13,4 +13,4 @@ define('WEB_URL', 'http://sbapi.forevergame.com/api.php');
 define('UC_URL', 'http://sbuc.forevergame.com/user.php');
 
 //ip_white
-define('IP_WHITE', '101.81.20.34');//多个IP用#号隔开
+define('IP_WHITE', '210.22.178.170');//多个IP用#号隔开

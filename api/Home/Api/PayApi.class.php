@@ -110,7 +110,7 @@ class PayApi extends BaseApi
         //返回回掉地址
         $serverList = get_server_list();
         $return['callback'] = $serverList[C('G_SID')]['channel'][$this->mSessionInfo['channel_id']]['callback'];
-        $return['gateway_id'] = C('G_SID');
+        $return['gateway_id'] = $serverList[C('G_SID')]['platform']['sid'];
 
         //返回
         return $return;
@@ -246,44 +246,111 @@ class PayApi extends BaseApi
     //订单确认
     public function confirm()
     {
+        //更新sdk信息
+        $this->refreshSDK($_POST['pf'], $_POST['pfkey'], $_POST['paytoken']);
 
-        //查询订单情况
-        $where['order_id'] = $_POST['order_id'];
-        $orderLogInfo = M('LOrder')->where($where)->find();
+        //查询用户充值情况
+        if(false === $rs = D('Msdk')->get_balance_m($this->mSessionInfo['channel_type'], $this->mSessionInfo['channel_uid'], $this->mSessionInfo['channel_token'], $this->mSessionInfo['pay_token'], $this->mSessionInfo['pf'], $this->mSessionInfo['pfkey'])){
+            C('G_ERROR', 'msdk_error');
+            return false;
+        }
 
-        //订单没有处理
-        if (empty($orderLogInfo)) {
+        //定义行为
+        C('G_BEHAVE', 'pay');
+        $orderStatus = 1;
+        $orderId = $_POST['order_id'];
 
-            $orderInfo = M('GOrder')->where($where)->find();
-            if (empty($orderInfo)) {
-                C('G_ERROR', 'order_not_available');
-                return false;
+        //同步diamond_pay
+        D('GTeam')->updateAttr($this->mTid, 'diamond_pay', $rs['diamond_pay']);
+
+        //查询订单
+        $where['order_id'] = $orderId;
+        $orderInfo = M('GOrder')->where($where)->find();
+        if (empty($orderInfo)) {
+            return $orderStatus;
+        }
+
+        //获取玩家已充值的钱数
+        $payTotal = D('GVip')->getAttr($this->mTid, 'pay');
+        $payTotalDiamond = $payTotal / 100 * C('MONEY_RATE');
+
+        //比较应用宝数据与当前数据是否有差异
+        if($rs['pay'] <= $payTotalDiamond){
+            C('G_ERROR', 'msdk_error');
+            return $orderStatus;
+        }else{
+            $payDiamondAmount = $rs['pay'] - $payTotalDiamond;
+        }
+
+        //获取Cash信息
+        $cashConfig = D('Static')->access('cash', $orderInfo['cash_id']);
+        $price = $cashConfig['price'];
+        $needDiamond = $cashConfig['price'] / 100 * C('MONEY_RATE');
+
+        //检查价格是否正确
+        if ($needDiamond > $payDiamondAmount && $payDiamondAmount >= 0) {
+            $orderStatus = 2;//订单金额有误
+        }
+
+        //订单日志
+        $add['tid'] = $orderInfo['tid'];
+        $add['cash_id'] = $orderInfo['cash_id'];
+        $add['price'] = $price;
+        $add['channel_id'] = $orderInfo['channel_id'];
+        $add['order_id'] = $orderInfo['order_id'];
+        $add['platform_order_id'] = '';
+        $add['verify'] = '';
+        $add['level'] = D('GTeam')->getAttr($orderInfo['tid'], 'level');
+        $add['starttime'] = $orderInfo['ctime'];
+        $add['comment'] = '';
+
+        //开始事务
+        $this->transBegin();
+
+        //正常充值
+        if ($orderStatus == 1) {
+            if (false === $this->delivery($orderInfo['tid'], $orderInfo['cash_id'])) {
+                goto end;
+            }
+        }
+
+        //异常充值
+        if ($needDiamond != $payDiamondAmount && $payDiamondAmount > 0) {
+
+            //计算实际获得金钱
+            $add['price'] = $payDiamondAmount / C('MONEY_RATE') * 100;
+
+            //计算异常量
+            if ($needDiamond > $payDiamondAmount) {
+                $abnormal = $payDiamondAmount;
+                $isCount = true;
+            } else {
+                $abnormal = $payDiamondAmount - $needDiamond;
+                $isCount = false;
             }
 
-            //检查订单是否属于玩家
-            if ($orderInfo['tid'] != $this->mTid) {
-                C('G_ERROR', 'order_id_error');
-                return false;
+            //增加异常数值水晶
+            if (false === $this->abnormalDelivery($orderInfo['tid'], $abnormal, $isCount)) {
+                goto end;
             }
-
-            //状态
-            $status = 2;
-
-        } else {
-
-            //检查订单是否属于玩家
-            if ($orderLogInfo['tid'] != $this->mTid) {
-                C('G_ERROR', 'order_id_error');
-                return false;
-            }
-
-            //状态
-            $status = $orderLogInfo['status'] > 0 ? 1 : $orderLogInfo['status'];
 
         }
 
+        C('G_TRANS_FLAG', true);
+        end:
+        if (!$this->transEnd()) {
+            $orderStatus = -5;//增加商品失败
+        }
+
+        //记录日志
+        $add['status'] = $orderStatus;
+        D('LOrder')->CreateData($add);
+
+        //删除订单
+        D('GOrder')->DeleteData($where);
+
         //返回
-        return $status;
+        return $orderStatus;
 
     }
 
@@ -331,107 +398,6 @@ class PayApi extends BaseApi
 
         //返回
         return true;
-    }
-
-
-    //回掉接口
-    public function callback($payDiamondAmount, $orderId, $platformOrderId, $verify, $status, $comment = '')
-    {
-
-        //定义行为
-        C('G_BEHAVE', 'pay');
-        $orderStatus = 1;
-
-        //没有订单号
-        if (empty($orderId)) {
-            return 0;
-        }
-
-        //查询订单
-        $where['order_id'] = $orderId;
-        $orderInfo = M('GOrder')->where($where)->find();
-        if (empty($orderInfo)) {
-            return 0;
-        }
-
-        //获取Cash信息
-        $cashConfig = D('Static')->access('cash', $orderInfo['cash_id']);
-        $price = $cashConfig['price'];
-        $needDiamond = $cashConfig['price'] / 100 * C('MONEY_RATE');
-
-        //检查价格是否正确
-        if ($needDiamond > $payDiamondAmount && $payDiamondAmount >= 0) {
-            $orderStatus = 2;//订单金额有误
-        }
-
-        //订单日志
-        $add['tid'] = $orderInfo['tid'];
-        $add['cash_id'] = $orderInfo['cash_id'];
-        $add['price'] = $price;
-        $add['channel_id'] = $orderInfo['channel_id'];
-        $add['order_id'] = $orderInfo['order_id'];
-        $add['platform_order_id'] = $platformOrderId;
-        $add['verify'] = $verify;
-        $add['level'] = D('GTeam')->getAttr($orderInfo['tid'], 'level');
-        $add['starttime'] = $orderInfo['ctime'];
-        $add['comment'] = $comment;
-
-        if ($status == 1) {
-
-            //开始事务
-            $this->transBegin();
-
-            //正常充值
-            if ($orderStatus == 1) {
-                if (false === $this->delivery($orderInfo['tid'], $orderInfo['cash_id'])) {
-                    goto end;
-                }
-            }
-
-            //异常充值
-            if ($needDiamond != $payDiamondAmount && $payDiamondAmount > 0) {
-
-                //计算实际获得金钱
-                $add['price'] = $payDiamondAmount / C('MONEY_RATE') * 100;
-
-                //计算异常量
-                if ($needDiamond > $payDiamondAmount) {
-                    $abnormal = $payDiamondAmount;
-                    $isCount = true;
-                } else {
-                    $abnormal = $payDiamondAmount - $needDiamond;
-                    $isCount = false;
-                }
-
-                //增加异常数值水晶
-                if (false === $this->abnormalDelivery($orderInfo['tid'], $abnormal, $isCount)) {
-                    goto end;
-                }
-
-            }
-
-            C('G_TRANS_FLAG', true);
-            end:
-            if (!$this->transEnd()) {
-                $orderStatus = -5;//增加商品失败
-            }
-
-        } else {
-            //支付失败
-            $orderStatus = 0;
-
-        }
-
-        //记录日志
-        $add['status'] = $orderStatus;
-        D('LOrder')->CreateData($add);
-
-        //删除订单
-        D('GOrder')->DeleteData($where);
-
-        //返回
-        return $orderStatus;
-
     }
 
 }

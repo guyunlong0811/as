@@ -81,6 +81,11 @@ class GTeamModel extends BaseModel
         $arr['league_id'] = $team['league_id'] > 0 ? $team['league_id'] : 0;
         $arr['channel_id'] = $team['channel_id'] > 0 ? $team['channel_id'] : $_POST['channel_id'];
         $arr['channel_uid'] = $_POST['channel_uid'];
+        $arr['channel_token'] = $_POST['channel_token'];
+        $arr['channel_type'] = $_POST['channel_type'];
+        $arr['pf'] = $_POST['pf'];
+        $arr['pfkey'] = $_POST['pfkey'];
+        $arr['pay_token'] = $_POST['paytoken'];
         if($tid == 0){
             $tid = $token;
         }
@@ -129,7 +134,7 @@ class GTeamModel extends BaseModel
         $where['uid'] = $uid;
         $where['channel_id'] = $channelId;
         $count = $this->where($where)->count();
-        if ($count == '0'){
+        if ($count == '0') {
             return false;
         }
         return true;
@@ -356,6 +361,14 @@ class GTeamModel extends BaseModel
                 break;
         }
 
+        //如果是付费钻石则发送协议
+        if ($attr == 'diamond_pay') {
+            $info = D('Predis')->cli('game')->hgetall('s:' . $tid);
+            if (false === D('Msdk')->pay_m($info['channel_type'], $info['channel_uid'], $info['channel_token'], $info['pay_token'], $info['pf'], $info['pfkey'], $value)) {
+                C('G_ERROR', 'platform_login_error');
+                return false;
+            }
+        }
 
         if ($before === null) {
             $before = $this->getAttr($tid, $attr);
@@ -366,6 +379,48 @@ class GTeamModel extends BaseModel
         }
         //记录日志
         D('LTeam')->cLog($tid, $attr, -$value, $before);//日志
+        return true;
+    }
+
+    //改变属性
+    public function updateAttr($tid, $attr, $value, $before = null)
+    {
+
+        //如果没有before
+        if ($before === null) {
+            $before = $this->getAttr($tid, $attr);
+        }
+
+        $change = $value - $before;
+
+        if($change != 0){
+            $log = "tid:{$tid};change:{$change};before:{$before};\n";
+            write_log($log, "tx/log_sync/s" . C('G_SID') . '/');
+        }
+
+        //充值活动
+        if ($attr == 'diamond_pay') {
+            if ($change >= 0) {
+                $this->activityPayConsume($tid, 1, $change);
+            } else if ($change < 0) {
+                $this->activityPayConsume($tid, 2, abs($change));
+            }
+        }
+
+        //修改值为0
+        if ($change == 0) {
+            return true;
+        }
+        if ($value != $before) {
+            $where['tid'] = $tid;
+            $data[$attr] = $value;
+            if (false === $this->UpdateData($data, $where)) {
+                return false;
+            }
+        }
+
+        //记录日志
+        D('LTeam')->cLog($tid, $attr, $change, $before);
         return true;
     }
 
@@ -526,7 +581,7 @@ class GTeamModel extends BaseModel
 
         //获取活动情况
         $config = D('StaticDyn')->access('event');
-        if(empty($config)){
+        if (empty($config)) {
             return true;
         }
 
@@ -553,7 +608,7 @@ class GTeamModel extends BaseModel
             }
 
             //消费活动
-            if ($value['type1'] != $type){
+            if ($value['type1'] != $type) {
                 continue;
             }
 
@@ -585,15 +640,15 @@ class GTeamModel extends BaseModel
                 case '1':
 
                     //领取次数
-                    if($complete[$value['index']] < $value['receive_max']) {
+                    if ($complete[$value['index']] < $value['receive_max']) {
 
                         //获取活动时间内情况
                         $key = 'diamond' . $value['group'];
 
                         if (!isset($$key)) {
-                            if($type == '1') {
+                            if ($type == '1') {
                                 $where = "`tid`='{$tid}' && `attr`='diamond_pay' && `value`>0 && `ctime` between '{$value['starttime']}' and '{$value['endtime']}'";
-                            }else if($type == '2') {
+                            } else if ($type == '2') {
                                 $where = "`tid`='{$tid}' && (`attr`='diamond_pay' || `attr`='diamond_free') && `value`<0 && `ctime` between '{$value['starttime']}' and '{$value['endtime']}'";
                             }
                             $$key = D('LTeam')->where($where)->sum('value');
@@ -620,15 +675,15 @@ class GTeamModel extends BaseModel
                 case '2':
 
                     //领取次数
-                    if($completeToday[$value['index']] < $value['receive_max']) {
+                    if ($completeToday[$value['index']] < $value['receive_max']) {
 
                         //获取活动时间内消费情况
                         if (is_null($dailyPayConsume)) {
                             $starttime = get_daily_utime();
                             $endtime = $starttime + 86399;
-                            if($type == '1') {
+                            if ($type == '1') {
                                 $where = "`tid`='{$tid}' && `attr`='diamond_pay' && `value`>0 && `ctime` between '{$starttime}' and '{$endtime}'";
-                            }else if($type == '2') {
+                            } else if ($type == '2') {
                                 $where = "`tid`='{$tid}' && (`attr`='diamond_pay' || `attr`='diamond_free') && `value`<0 && `ctime` between '{$value['starttime']}' and '{$value['endtime']}'";
                             }
                             $dailyPayConsume = D('LTeam')->where($where)->sum('value');

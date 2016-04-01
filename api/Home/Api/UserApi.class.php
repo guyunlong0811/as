@@ -51,63 +51,27 @@ class UserApi extends BaseApi
                 break;
 
             default:
-
-                //获取配置文件
-                require_once(COMMON_PATH . 'Common/oksdk/common.inc.php');
-
-                //制造post数据
-                $post['interface'] = 'UserLogin';
-                $post['uid'] = $_POST['channel_uid'];
-                $post['token'] = $_POST['channel_token'];
-                $post['client_ip'] = get_ip();
-                $post['unix_time'] = time();
-                $str = $post['unix_time'] . '&' . $post['uid'] . '&' . OKSDK_APP_KEY . '&' . $post['token'];
-                $post['sign'] = md5($str);
-
-                //获取登录请求地址
-                $serverList = get_server_list();
-                $serverList = $serverList[C('G_SID')];
-                $host = '';
-                foreach ($serverList['channel'] as $value) {
-                    if ($value['channel_id'] == $_POST['channel_id']) {
-                        $host = $value['user_login'];
+                switch($_POST['channel_type']){
+                    case '1':
+                        $loginInfo = D('Msdk')->wx_check_token($_POST['channel_uid'], $_POST['channel_token']);
                         break;
-                    }
+                    case '2':
+                        $loginInfo = D('Msdk')->verify_login($_POST['channel_uid'], $_POST['channel_token']);
+                        break;
                 }
 
-                //平台出错
-                if ($host == '') {
-                    C('G_ERROR', 'channel_not_exist');
+                if (!$loginInfo) {
+                    //参数错误
+                    C('G_DEBUG_PARAMS', 'channel_type');
+                    C('G_ERROR', 'params_error');
                     return false;
-                }
-
-                //发送请求
-                $jsonReturn = curl_link($host, 'post', json_encode($post));
-
-                //获取返回
-                $loginInfo = json_decode($jsonReturn, true);
-                if ($loginInfo['result_code'] != 1) {
+                }else if ($loginInfo['ret'] != 0) {
                     C('G_ERROR', 'platform_login_error');
                     C('G_DEBUG_PT_ERROR', $loginInfo);
                     return false;
                 } else {
-                    $_POST['channel_uid'] = $channelInfo['id'] = $loginInfo['uid'];
+                    $channelInfo['id'] = $_POST['channel_uid'];
                 }
-
-
-            /*
-            //安卓360
-            case '29001':
-                $rs = require_once(COMMON_PATH . 'Common/qihoo/user.php');
-                $channelInfo = json_decode($rs, true);
-                if (!isset($channelInfo['id'])) {
-                    C('G_ERROR', 'platform_login_error');
-                    return false;
-                } else {
-                    $_POST['channel_uid'] = $channelInfo['id'];
-                }
-                break;
-            */
 
         }
         if (!$return = $this->toLogin('fast')) {
@@ -261,8 +225,122 @@ class UserApi extends BaseApi
             //写入登录记录
             D('LLogin')->cLog($tid);
 
+            //同步diamond_pay
+            if(false === $rs = D('Msdk')->get_balance_m($_POST['channel_type'], $_POST['channel_uid'], $_POST['channel_token'], $_POST['paytoken'], $_POST['pf'], $_POST['pfkey'])){
+                C('G_ERROR', 'msdk_error');
+                return false;
+            }else{
+                $this->synPay($rs);
+            }
+
         }
         return true;
+    }
+
+    //腾讯服登录充值数据与现有不同自动创建订单
+    private function synPay($pt){
+
+        //定义行为
+        $nowBehave = C('G_BEHAVE');
+        C('G_BEHAVE', 'pay');
+        $now = time();
+        $orderStatus = 1;
+
+        //同步diamond_pay
+        D('GTeam')->updateAttr($this->mTid, 'diamond_pay', $pt['diamond_pay']);
+
+        //获取玩家已充值的钱数
+        $payTotal = D('GVip')->getAttr($this->mTid, 'pay');
+        $payTotalDiamond = $payTotal / 100 * C('MONEY_RATE');
+        if($pt['pay'] <= $payTotalDiamond){
+            return true;
+        }
+
+        //计算双方数据差异
+        $payDiamondAmount = $pt['pay'] - $payTotalDiamond;
+
+        //确认
+        $cashId = 0;
+        $cashConfig = D('Static')->access('cash');
+        foreach ($cashConfig as $key => $value) {
+            if($value['value'] < $payDiamondAmount){
+                $cashId = $key;
+            }else if($value['value'] == $payDiamondAmount){
+                $cashId = $key;
+                break;
+            }else if($value['value'] > $payDiamondAmount){
+                if($cashId == 0){
+                    $cashId = $key;
+                }
+                break;
+            }
+        }
+        $needDiamond = $cashConfig[$cashId]['price'] / 100 * C('MONEY_RATE');
+
+        //订单日志
+        $add['tid'] = $this->mTid;
+        $add['cash_id'] = $cashId;
+        $add['price'] = $payDiamondAmount / C('MONEY_RATE') * 100;
+        $add['channel_id'] = $_POST['channel_id'];
+        $add['order_id'] = create_order_id($this->mTid);
+        $add['platform_order_id'] = '';
+        $add['verify'] = '';
+        $add['level'] = D('GTeam')->getAttr($this->mTid, 'level');
+        $add['starttime'] = $now;
+        $add['comment'] = '';
+
+        //检查价格是否正确
+        if ($needDiamond > $payDiamondAmount && $payDiamondAmount >= 0) {
+            $orderStatus = 2;//订单金额有误
+        }
+
+        //开始事务
+        $this->transBegin();
+
+        //正常充值
+        if ($orderStatus == 1) {
+            if (false === $this->delivery($add['tid'], $add['cash_id'])) {
+                goto end;
+            }
+        }
+
+        //异常充值
+        if ($needDiamond != $payDiamondAmount && $payDiamondAmount > 0) {
+
+            //计算实际获得金钱
+            $add['price'] = $payDiamondAmount / C('MONEY_RATE') * 100;
+
+            //计算异常量
+            if ($needDiamond > $payDiamondAmount) {
+                $abnormal = $payDiamondAmount;
+                $isCount = true;
+            } else {
+                $abnormal = $payDiamondAmount - $needDiamond;
+                $isCount = false;
+            }
+
+            //增加异常数值水晶
+            if (false === $this->abnormalDelivery($add['tid'], $abnormal, $isCount)) {
+                goto end;
+            }
+
+        }
+
+        C('G_TRANS_FLAG', true);
+        end:
+        if (!$this->transEnd()) {
+            $orderStatus = -5;//增加商品失败
+        }
+
+        //记录日志
+        $add['status'] = $orderStatus;
+        D('LOrder')->CreateData($add);
+
+        //返回
+        C('G_BEHAVE', $nowBehave);
+        return true;
+
+
     }
 
     //用户注册（用户中心）
@@ -518,6 +596,12 @@ class UserApi extends BaseApi
     public function stay()
     {
         return true;
+    }
+
+    //刷新连接
+    public function refresh()
+    {
+        return $this->refreshSDK($_POST['pf'], $_POST['pfkey'], $_POST['paytoken']);
     }
 
 }
